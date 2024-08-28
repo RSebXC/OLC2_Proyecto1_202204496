@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OakLand-js</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script type="module" src="index.js"></script>
+    <div class="navbar">
+        <h1 class="navbar-title"><i class="fas fa-code"></i> OakLand-js</h1>
+        <div class="navbar-buttons">
+            <button class="btn" id="execute" style="background-color: #007BFF;">
+                <i class="fas fa-play"></i> Ejecutar
+            </button>
+            <button class="btn" id="openFile" style="background-color: #28A745;">
+                <i class="fas fa-folder-open"></i> Archivo
+            </button>
+            <button class="btn" id="reportFile" style="background-color: #FF0000;">
+                <i class="fas fa-file-code"></i> Reportes
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="tab1" style="background-color: #FFC107;">Archivo 1</div>
+            <div class="tab" data-tab="tab2" style="background-color: #FFC107;">Archivo 2</div>
+            <div class="tab" data-tab="tab3" style="background-color: #FFC107;">Archivo 3</div>
+            <div class="tab" data-tab="tab4" style="background-color: #FFC107;">Archivo 4</div>
+        </div>
+        <div class="editor">
+            <textarea class="code-editor" id="code-editor" style="color: #00FF00;" placeholder="Consola de Entrada, escribe aquí..."></textarea>
+        </div>
+        <div class="console">
+            <textarea class="code-output" id="output" readonly style="color: yellow;">// Salida de código aquí...</textarea>
+        </div>
+    </div>
+    <pre id="ast"></pre>
+    <script src="scripts.js"></script>
+    
+</body>
+</html>
