@@ -28,7 +28,52 @@
  * @typedef {import('./nodos').ExpresionStmt} ExpresionStmt
 
 
+ * @typedef {import('./nodos').DeclaracionArray} DeclaracionArray
+
+
+ * @typedef {import('./nodos').arrayLiteral} arrayLiteral
+
+
+ * @typedef {import('./nodos').AsignacionArray} AsignacionArray
+
+
+ * @typedef {import('./nodos').IndexOf} IndexOf
+
+
+ * @typedef {import('./nodos').Join} Join
+
+
+ * @typedef {import('./nodos').Length} Length
+
+
+ * @typedef {import('./nodos').ArrayAccess} ArrayAccess
+
+
+ * @typedef {import('./nodos').ArrayAssignment} ArrayAssignment
+
+
  * @typedef {import('./nodos').Asignacion} Asignacion
+
+
+ * @typedef {import('./nodos').Switch} Switch
+
+
+ * @typedef {import('./nodos').ParseInt} ParseInt
+
+
+ * @typedef {import('./nodos').ParseFloat} ParseFloat
+
+
+ * @typedef {import('./nodos').ToString} ToString
+
+
+ * @typedef {import('./nodos').ToLowerCase} ToLowerCase
+
+
+ * @typedef {import('./nodos').ToUpperCase} ToUpperCase
+
+
+ * @typedef {import('./nodos').TypeOf} TypeOf
 
 
  * @typedef {import('./nodos').Bloque} Bloque
@@ -53,6 +98,30 @@
 
 
  * @typedef {import('./nodos').Llamada} Llamada
+
+
+ * @typedef {import('./nodos').FuncDcl} FuncDcl
+
+
+ * @typedef {import('./nodos').ClassDcl} ClassDcl
+
+
+ * @typedef {import('./nodos').Instancia} Instancia
+
+
+ * @typedef {import('./nodos').Get} Get
+
+
+ * @typedef {import('./nodos').Set} Set
+
+
+ * @typedef {import('./nodos').MatrixDeclaracion} MatrixDeclaracion
+
+
+ * @typedef {import('./nodos').AsignacionMatriz} AsignacionMatriz
+
+
+ * @typedef {import('./nodos').AccesoMatriz} AccesoMatriz
 
  */
 
@@ -146,11 +215,146 @@ export class BaseVisitor {
     
 
     /**
+     * @param {DeclaracionArray} node
+     * @returns {any}
+     */
+    visitDeclaracionArray(node) {
+        throw new Error('Metodo visitDeclaracionArray no implementado');
+    }
+    
+
+    /**
+     * @param {arrayLiteral} node
+     * @returns {any}
+     */
+    visitarrayLiteral(node) {
+        throw new Error('Metodo visitarrayLiteral no implementado');
+    }
+    
+
+    /**
+     * @param {AsignacionArray} node
+     * @returns {any}
+     */
+    visitAsignacionArray(node) {
+        throw new Error('Metodo visitAsignacionArray no implementado');
+    }
+    
+
+    /**
+     * @param {IndexOf} node
+     * @returns {any}
+     */
+    visitIndexOf(node) {
+        throw new Error('Metodo visitIndexOf no implementado');
+    }
+    
+
+    /**
+     * @param {Join} node
+     * @returns {any}
+     */
+    visitJoin(node) {
+        throw new Error('Metodo visitJoin no implementado');
+    }
+    
+
+    /**
+     * @param {Length} node
+     * @returns {any}
+     */
+    visitLength(node) {
+        throw new Error('Metodo visitLength no implementado');
+    }
+    
+
+    /**
+     * @param {ArrayAccess} node
+     * @returns {any}
+     */
+    visitArrayAccess(node) {
+        throw new Error('Metodo visitArrayAccess no implementado');
+    }
+    
+
+    /**
+     * @param {ArrayAssignment} node
+     * @returns {any}
+     */
+    visitArrayAssignment(node) {
+        throw new Error('Metodo visitArrayAssignment no implementado');
+    }
+    
+
+    /**
      * @param {Asignacion} node
      * @returns {any}
      */
     visitAsignacion(node) {
         throw new Error('Metodo visitAsignacion no implementado');
+    }
+    
+
+    /**
+     * @param {Switch} node
+     * @returns {any}
+     */
+    visitSwitch(node) {
+        throw new Error('Metodo visitSwitch no implementado');
+    }
+    
+
+    /**
+     * @param {ParseInt} node
+     * @returns {any}
+     */
+    visitParseInt(node) {
+        throw new Error('Metodo visitParseInt no implementado');
+    }
+    
+
+    /**
+     * @param {ParseFloat} node
+     * @returns {any}
+     */
+    visitParseFloat(node) {
+        throw new Error('Metodo visitParseFloat no implementado');
+    }
+    
+
+    /**
+     * @param {ToString} node
+     * @returns {any}
+     */
+    visitToString(node) {
+        throw new Error('Metodo visitToString no implementado');
+    }
+    
+
+    /**
+     * @param {ToLowerCase} node
+     * @returns {any}
+     */
+    visitToLowerCase(node) {
+        throw new Error('Metodo visitToLowerCase no implementado');
+    }
+    
+
+    /**
+     * @param {ToUpperCase} node
+     * @returns {any}
+     */
+    visitToUpperCase(node) {
+        throw new Error('Metodo visitToUpperCase no implementado');
+    }
+    
+
+    /**
+     * @param {TypeOf} node
+     * @returns {any}
+     */
+    visitTypeOf(node) {
+        throw new Error('Metodo visitTypeOf no implementado');
     }
     
 
@@ -223,6 +427,78 @@ export class BaseVisitor {
      */
     visitLlamada(node) {
         throw new Error('Metodo visitLlamada no implementado');
+    }
+    
+
+    /**
+     * @param {FuncDcl} node
+     * @returns {any}
+     */
+    visitFuncDcl(node) {
+        throw new Error('Metodo visitFuncDcl no implementado');
+    }
+    
+
+    /**
+     * @param {ClassDcl} node
+     * @returns {any}
+     */
+    visitClassDcl(node) {
+        throw new Error('Metodo visitClassDcl no implementado');
+    }
+    
+
+    /**
+     * @param {Instancia} node
+     * @returns {any}
+     */
+    visitInstancia(node) {
+        throw new Error('Metodo visitInstancia no implementado');
+    }
+    
+
+    /**
+     * @param {Get} node
+     * @returns {any}
+     */
+    visitGet(node) {
+        throw new Error('Metodo visitGet no implementado');
+    }
+    
+
+    /**
+     * @param {Set} node
+     * @returns {any}
+     */
+    visitSet(node) {
+        throw new Error('Metodo visitSet no implementado');
+    }
+    
+
+    /**
+     * @param {MatrixDeclaracion} node
+     * @returns {any}
+     */
+    visitMatrixDeclaracion(node) {
+        throw new Error('Metodo visitMatrixDeclaracion no implementado');
+    }
+    
+
+    /**
+     * @param {AsignacionMatriz} node
+     * @returns {any}
+     */
+    visitAsignacionMatriz(node) {
+        throw new Error('Metodo visitAsignacionMatriz no implementado');
+    }
+    
+
+    /**
+     * @param {AccesoMatriz} node
+     * @returns {any}
+     */
+    visitAccesoMatriz(node) {
+        throw new Error('Metodo visitAccesoMatriz no implementado');
     }
     
 }

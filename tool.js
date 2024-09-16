@@ -126,6 +126,11 @@ const configuracionNodos = [
                 name: 'exp',
                 type: 'Expresion',
                 description: 'Expresion de la variable'
+            },
+            {
+                name: 'tipo',
+                type: 'string',
+                description: 'tipo de la variable'
             }
         ]
     },
@@ -165,6 +170,144 @@ const configuracionNodos = [
             }
         ]
     },
+    {
+        name: 'DeclaracionArray',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'id',
+                type: 'string',
+                description: 'Identificador del array'
+            },
+            {
+                name: 'tipo',
+                type: 'Expresion',
+                description: 'Tipo de los elementos del array'
+            },
+            {
+                name: 'tipoArray',
+                type: 'Expresion',
+                description: 'Tipo del array (para la declaración con new)'
+            },
+            {
+                name: 'tamano',
+                type: 'Expresion',
+                description: 'Tamaño del array (para la declaración con new)'
+            },
+            {
+                name: 'array',
+                type: 'arrayLiteral',
+                description: 'Elementos del array (para la declaración con valores literales)'
+            }
+        ]
+    },
+    {
+        name: 'arrayLiteral',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'elems',
+                type: 'Array<Expresion>',
+                description: 'Elementos del array'
+            }
+        ]
+    },
+    {
+        name: 'AsignacionArray',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'id',
+                type: 'string',
+                description: 'Identificador del array que recibe la asignación'
+            },
+            {
+                name: 'source',
+                type: 'string',
+                description: 'Identificador del array fuente'
+            },
+            {
+                name: 'tipo',
+                type: 'Expresion',
+                description: 'Tipo de los elementos del array'
+            }
+        ]
+    },
+    {
+        name: 'IndexOf',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador del array'
+            },
+            {
+                name: 'elem',
+                type: 'Expresion',
+                description: 'Elemento a buscar en el array'
+            }
+        ]
+    },
+    {
+        name: 'Join',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador del array'
+            }
+        ]
+    },
+    {
+        name: 'Length',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador del array'
+            }
+        ]
+    },        
+    {
+        name: 'ArrayAccess',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador del array'
+            },
+            {
+                name: 'index',
+                type: 'Expresion',
+                description: 'Índice del elemento'
+            }
+        ]
+    },
+    {
+        name: 'ArrayAssignment',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador del array'
+            },
+            {
+                name: 'index',
+                type: 'Expresion',
+                description: 'Índice del elemento'
+            },
+            {
+                name: 'valor',
+                type: 'Expresion',
+                description: 'Nuevo valor para asignar'
+            }
+        ]
+    },    
     // Asignacion
     {
         name: 'Asignacion',
@@ -179,6 +322,98 @@ const configuracionNodos = [
                 name: 'asgn',
                 type: 'Expresion',
                 description: 'Expresion a asignar'
+            },
+            {
+                name: 'op',
+                type: 'string',
+                description: 'Operador de asignacion'
+            }
+        ]
+    },
+    {
+        name: 'Switch',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'expr',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
+            },
+            {
+                name: 'cases',
+                type: 'Expresion[]',
+                description: 'Casos del switch'
+            },
+            {
+                name: 'defaultCase',
+                type: 'Expresion',
+                description: 'Caso por defecto'
+            }
+        ]
+    },
+    {
+        name: 'ParseInt',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'exp',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
+            }
+        ]
+    },
+    {
+        name: 'ParseFloat',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'exp',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
+            }
+        ]
+    },
+    {
+        name: 'ToString',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'exp',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
+            }
+        ]
+    },
+    {
+        name: 'ToLowerCase',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'exp',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
+            }
+        ]
+    },
+    {
+        name: 'ToUpperCase',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'exp',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
+            }
+        ]
+    },
+    {
+        name: 'TypeOf',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'exp',
+                type: 'Expresion',
+                description: 'Expresion a evaluar'
             }
         ]
     },
@@ -259,6 +494,7 @@ const configuracionNodos = [
             }
         ]
     },
+    
     // / "break" _ ";" { return crearNodo('break') }
     {
         name: 'Break',
@@ -299,7 +535,167 @@ const configuracionNodos = [
                 description: 'Argumentos de la llamada'
             }
         ]
-    }
+    },
+    {
+        name: 'FuncDcl',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'id',
+                type: 'string',
+                description: 'Identificador de la funcion'
+            },
+            {
+                name: 'params',
+                type: 'Array<{tipo: string, id: string}>',
+                description: 'Parametros de la funcion'
+            },
+            {
+                name: 'bloque',
+                type: 'Bloque',
+                description: 'Cuerpo de la funcion'
+            }
+        ]
+    },    
+    // ClassDcl
+    // rearNodo('dclClase', { id, dcls }) }
+    {
+        name: 'ClassDcl',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'id',
+                type: 'string',
+                description: 'Identificador del struct'
+            },
+            {
+                name: 'dcls',
+                type: 'Expresion[]',
+                description: 'Declaraciones del struct'
+            }
+        ]
+    },    
+    //   / "new" _ id:Identificador _ "(" _ Argumentos? _ ")" { return crearNodo('instancia', { id, args: args || [] }) }
+    {
+        name: 'Instancia',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'id',
+                type: 'string',
+                description: 'Identificador de la clase'
+            },
+            {
+                name: 'args',
+                type: 'Expresion[]',
+                description: 'Argumentos de la instancia'
+            }
+        ]
+    },
+    // return crearNodo('get', { objetivo, propiedad: id })
+    {
+        name: 'Get',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'objetivo',
+                type: 'Expresion',
+                description: 'Objeto de la propiedad'
+            },
+            {
+                name: 'propiedad',
+                type: 'string',
+                description: 'Identificador de la propiedad'
+            }
+        ]
+    },
+    {
+        name: 'Set',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'objetivo',
+                type: 'Expresion',
+                description: 'Objeto de la propiedad'
+            },
+            {
+                name: 'propiedad',
+                type: 'string',
+                description: 'Identificador de la propiedad'
+            },
+            {
+                name: 'valor',
+                type: 'Expresion',
+                description: 'Valor de la propiedad'
+            }
+        ]
+    },
+    {
+        name: 'MatrixDeclaracion',
+        extends: 'Expresion',
+        props: [
+            { 
+                name: 'id', 
+                type: 'string', 
+                description: 'Identificador de la matriz' 
+            },
+            { 
+                name: 'tipo', 
+                type: 'Tipos', 
+                description: 'Tipo de los elementos de la matriz' 
+            },
+            { 
+                name: 'valores', 
+                type: 'FormasMatrix', 
+                description: 'Valores iniciales de la matriz o declaración con tamaños' 
+            },
+            { 
+                name: 'size', 
+                type: 'number | Array<Expresion>', 
+                description: 'Tamaños de las dimensiones de la matriz' 
+            }
+        ]
+    },
+    //MatrixAssignment = array:Identificador _ indices:("[" _ Expresion _ "]")+ _ "=" _ valor:Expresion _ ";" {return crearNodo('asignacionMatriz', { array, indices, valor });}
+    {
+        name: 'AsignacionMatriz',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador de la matriz'
+            },
+            {
+                name: 'indices',
+                type: 'Expresion[]',
+                description: 'Indices de la matriz'
+            },
+            {
+                name: 'valor',
+                type: 'Expresion',
+                description: 'Valor a asignar'
+            }
+        ]
+    },
+    //MatrixAccess = array:Identificador _ indices:("[" _ Expresion _ "]")+ { return crearNodo('accesoMatriz', { array, indices }); }
+    {
+        name: 'AccesoMatriz',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'array',
+                type: 'string',
+                description: 'Identificador de la matriz'
+            },
+            {
+                name: 'indices',
+                type: 'Expresion[]',
+                description: 'Indices de la matriz'
+            }
+        ]
+    }  
+    
 
 ]
 
