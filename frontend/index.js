@@ -1,4 +1,4 @@
-import { parse } from '../backend/parser.js';
+import { parse } from '../backend/analizador.js';
 import { InterpreterVisitor } from '../backend/interprete.js';
 
 // Selección de elementos del DOM
