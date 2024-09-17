@@ -1,5 +1,5 @@
 import { Entorno } from "./entorno.js";
-import { Invocable } from "./invocable.js";
+import { Invocable } from "./Invocable.js";
 import { FuncDcl } from "./nodos.js";
 import { ReturnException } from "./transferencia.js";
 

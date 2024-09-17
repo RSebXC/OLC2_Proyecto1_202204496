@@ -1,4 +1,4 @@
-import { Invocable } from "./invocable.js";
+import { Invocable } from "./Invocable.js";
 
 
 class FuncionNativa extends Invocable {

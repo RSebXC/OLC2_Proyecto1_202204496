@@ -1,6 +1,6 @@
 import { FuncionForanea } from "./foreanea.js";
 import { Instancia } from "./instancia.js";
-import { Invocable } from "./invocable.js";
+import { Invocable } from "./Invocable.js";
 import { Expresion } from "./nodos.js";
 
 
