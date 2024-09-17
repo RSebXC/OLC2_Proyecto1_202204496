@@ -2,7 +2,7 @@ import { Entorno } from "./entorno.js";
 import { BaseVisitor } from "./visitor.js";
 import nodos, { Expresion } from './nodos.js'
 import { BreakException, ContinueException, ReturnException } from "./transferencia.js";
-import { Invocable } from "./invocable.js";
+import { Invocable } from "./Invocable.js";
 import { embebidas } from "./embebidas.js";
 import { arrayLiteral } from "./nodos.js";
 import { FuncionForanea } from "./foreanea.js";
