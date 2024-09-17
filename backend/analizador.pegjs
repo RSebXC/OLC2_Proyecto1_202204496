@@ -155,8 +155,7 @@ ForInit = dcl:VarDcl { return dcl }
 
 Identificador = [a-zA-Z][a-zA-Z0-9]* { return text() }
 
-Expresion =  embebidas
-            / kkk:Asignacion {return kkk }
+Expresion = kkk:Asignacion {return kkk }
 
 Corchetes = "[" _ indice:Expresion _ "]" { return indice; }      
     
@@ -297,6 +296,7 @@ Dato =
   / Char
   / Bool
   / null
+  / embebidas
   / "new" _ id:Identificador _ "(" _ args:Argumentos? _ ")" { return crearNodo('instancia', { id, args: args || [] }) }
   /array:Identificador _ "." _ "indexOf" _ "(" _ elem:Expresion _ ")" { 
         return crearNodo('indexOf', { array, elem }); 
