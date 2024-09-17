@@ -1,5 +1,5 @@
-import { parse } from '../backend/analizador.js';
-import { InterpreterVisitor } from '../backend/interprete.js';
+import { parse } from './backend/analizador.js';
+import { InterpreterVisitor } from './backend/interprete.js';
 
 // Selección de elementos del DOM
 const editor = document.getElementById('code-editor');
