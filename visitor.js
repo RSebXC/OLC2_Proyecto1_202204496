@@ -106,6 +106,9 @@
  * @typedef {import('./nodos').ClassDcl} ClassDcl
 
 
+ * @typedef {import('./nodos').InstanciaStruct} InstanciaStruct
+
+
  * @typedef {import('./nodos').Instancia} Instancia
 
 
@@ -445,6 +448,15 @@ export class BaseVisitor {
      */
     visitClassDcl(node) {
         throw new Error('Metodo visitClassDcl no implementado');
+    }
+    
+
+    /**
+     * @param {InstanciaStruct} node
+     * @returns {any}
+     */
+    visitInstanciaStruct(node) {
+        throw new Error('Metodo visitInstanciaStruct no implementado');
     }
     
 

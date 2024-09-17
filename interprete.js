@@ -1121,30 +1121,47 @@ _obtenerValorPorDefecto(tipo) {
 
 
     /**
-     * @type {BaseVisitor['visitClassDcl']}
-     */
-    visitClassDcl(node) {
+ * @type {BaseVisitor['visitClassDcl']}
+ */
+visitClassDcl(node) {
+    const metodos = {};
+    const propiedades = {};
 
-        const metodos = {};
-        const propiedades = {};
+    // Recorre cada declaración dentro del struct
+    node.dcls.forEach(dcl => {
+        if (dcl instanceof nodos.FuncDcl) {
+            metodos[dcl.id] = new FuncionForanea(dcl, this.entornoActual);
+        } else if (dcl instanceof nodos.VarDcl) {
+            propiedades[dcl.id] = dcl.exp ? dcl.exp.accept(this) : null;
+        }
+    });
 
-        // Recorre cada declaración dentro del struct
-        node.dcls.forEach(dcl => {
-            if (dcl instanceof nodos.FuncDcl) {
-                metodos[dcl.id] = new FuncionForanea(dcl, this.entornoActual);
-            } else if (dcl instanceof nodos.VarDcl) {
-                // Las propiedades son variables dentro del struct
-                propiedades[dcl.id] = dcl.exp ? dcl.exp.accept(this) : null;
-            }
-        });
+    // Crea un nuevo struct (Clase) con propiedades y métodos
+    const struct = new Clase(node.id, propiedades, metodos);
 
-        // Crea un nuevo struct (Clase) con propiedades y métodos
-        const struct = new Struct(node.id, propiedades, metodos);
+    // Guarda el struct en el entorno actual
+    this.entornoActual.setVariable(node.id, { tipo: 'struct', valor: struct });
+}
 
-        // Guarda el struct en el entorno actual
-        this.entornoActual.setVariable(node.id, struct);
+/**
+ * @type {BaseVisitor['visitInstanciaStruct']}
+ */
+visitInstanciaStruct(node) {
+    const struct = this.entornoActual.getVariable(node.id);
+    if (!(struct instanceof Clase)) {
+        throw new Error(`El tipo ${node.id} no es un struct válido.`);
     }
 
+    const instancia = new Instancia(struct);
+    
+    // Asigna las propiedades pasadas al struct
+    node.valores.forEach(prop => {
+        const valor = prop.valor.accept(this);
+        instancia.set(prop.id, valor);
+    });
+
+    return instancia;
+}
 
     /**
     * @type {BaseVisitor['visitInstancia']}

@@ -44,7 +44,8 @@
       'set': nodos.Set,
       'matrixDeclaracion': nodos.MatrixDeclaracion,
       'asignacionMatriz': nodos.AsignacionMatriz,
-      'accesoMatriz': nodos.AccesoMatriz
+      'accesoMatriz': nodos.AccesoMatriz,
+      'InstanciaStruct': nodos.InstanciaStruct
     }
 
     const nodo = new tipos[tipoNodo](props)
@@ -60,7 +61,8 @@ Declaracion = dcl:Class _ { return dcl }
             / dcl:Funcion _ { return dcl }
             / stmt:Stmt _ { return stmt }
 
-VarDcl =  tipo:Tipo _ id:Identificador _ "=" _ exp:Expresion _ ";" { return crearNodo('declaracionVariable', { id, exp, tipo }) }
+VarDcl =  tipo:Tipo _ id:Identificador _ "=" _ inst:InstanciaStruct _ ";" { return crearNodo('declaracionStruct', { id, tipo, inst }); }
+       /tipo:Tipo _ id:Identificador _ "=" _ exp:Expresion _ ";" { return crearNodo('declaracionVariable', { id, exp, tipo }) }
        / tipo:Tipo _ id:Identificador _ (";" / ":")  { return crearNodo('declaracionVariable', { id, tipo }) }
        / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ source:Identificador _ ";" {return crearNodo('asignacionArray', { id, source, tipo }); }
        / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ array:ArrayLiteral _ ";" { return crearNodo('declaracionArray', { id, tipo, array }); }
@@ -95,6 +97,7 @@ Parametros = tipo:Tipo _ id:Identificador _ params:("," _ tipos:Tipo _ ids:Ident
 ClassBody
   = dcl:VarDcl _ { return dcl }
   / dcl:Funcion _ { return dcl }
+  / dcl:InstanciaStruct _ { return dcl }
 
 MatrixAssignment
 = array:Identificador _ indices:("[" _ valores:Expresion _ "]" {return valores})+ _ "=" _ valor:Expresion _ ";" {
@@ -309,7 +312,20 @@ Dato =
     }
   / id:Identificador { return crearNodo('referenciaVariable', { id }) }
 
-  
+InstanciaStruct
+    = id:Identificador _ "{" _ valores:PropStruct _ "}" {
+        return crearNodo('InstanciaStruct', { id, valores });
+    }
+
+PropStruct
+    = props:(PropStructItem (_ "," _ PropStructItem)*)? {
+        return props ? props.flat() : [];
+    }
+
+PropStructItem
+    = id:Identificador _ ":" _ valor:Expresion {
+        return { id, valor };
+    }
 
 Float = [0-9]+( "." [0-9]+ ) { return crearNodo('dato', { tipo: 'float', valor: parseFloat(text(), 10) }) }
 

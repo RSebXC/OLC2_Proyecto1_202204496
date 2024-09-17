@@ -563,18 +563,34 @@ const configuracionNodos = [
         name: 'ClassDcl',
         extends: 'Expresion',
         props: [
-            {
-                name: 'id',
-                type: 'string',
-                description: 'Identificador del struct'
+            { 
+                name: 'id', 
+                type: 'string', 
+                description: 'Identificador del struct' 
             },
-            {
-                name: 'dcls',
-                type: 'Expresion[]',
-                description: 'Declaraciones del struct'
+            { 
+                name: 'dcls', 
+                type: 'Expresion[]', 
+                description: 'Declaraciones del struct' 
             }
         ]
-    },    
+    },
+    {
+        name: 'InstanciaStruct',
+        extends: 'Expresion',
+        props: [
+            { 
+                name: 'id', 
+                type: 'string', 
+                description: 'Nombre del struct' 
+            },
+            { 
+                name: 'valores', 
+                type: 'Object.<string, Expresion>', 
+                description: 'Valores de las propiedades' 
+            }
+        ]
+    },     
     //   / "new" _ id:Identificador _ "(" _ Argumentos? _ ")" { return crearNodo('instancia', { id, args: args || [] }) }
     {
         name: 'Instancia',

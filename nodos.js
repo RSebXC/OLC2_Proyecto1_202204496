@@ -1119,6 +1119,39 @@ export class ClassDcl extends Expresion {
     }
 }
     
+export class InstanciaStruct extends Expresion {
+
+    /**
+    * @param {Object} options
+    * @param {string} options.id Nombre del struct
+ * @param {Object.<string, Expresion>} options.valores Valores de las propiedades
+    */
+    constructor({ id, valores }) {
+        super();
+        
+        /**
+         * Nombre del struct
+         * @type {string}
+        */
+        this.id = id;
+
+
+        /**
+         * Valores de las propiedades
+         * @type {Object.<string, Expresion>}
+        */
+        this.valores = valores;
+
+    }
+
+    /**
+     * @param {BaseVisitor} visitor
+     */
+    accept(visitor) {
+        return visitor.visitInstanciaStruct(this);
+    }
+}
+    
 export class Instancia extends Expresion {
 
     /**
@@ -1349,4 +1382,4 @@ export class AccesoMatriz extends Expresion {
     }
 }
     
-export default { Expresion, OperacionBinaria, OperacionUnaria, Agrupacion, Dato, DeclaracionVariable, ReferenciaVariable, Print, ExpresionStmt, DeclaracionArray, arrayLiteral, AsignacionArray, IndexOf, Join, Length, ArrayAccess, ArrayAssignment, Asignacion, Switch, ParseInt, ParseFloat, ToString, ToLowerCase, ToUpperCase, TypeOf, Bloque, If, While, For, Break, Continue, Return, Llamada, FuncDcl, ClassDcl, Instancia, Get, Set, MatrixDeclaracion, AsignacionMatriz, AccesoMatriz }
+export default { Expresion, OperacionBinaria, OperacionUnaria, Agrupacion, Dato, DeclaracionVariable, ReferenciaVariable, Print, ExpresionStmt, DeclaracionArray, arrayLiteral, AsignacionArray, IndexOf, Join, Length, ArrayAccess, ArrayAssignment, Asignacion, Switch, ParseInt, ParseFloat, ToString, ToLowerCase, ToUpperCase, TypeOf, Bloque, If, While, For, Break, Continue, Return, Llamada, FuncDcl, ClassDcl, InstanciaStruct, Instancia, Get, Set, MatrixDeclaracion, AsignacionMatriz, AccesoMatriz }
