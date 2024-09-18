@@ -45,7 +45,10 @@
       'matrixDeclaracion': nodos.MatrixDeclaracion,
       'asignacionMatriz': nodos.AsignacionMatriz,
       'accesoMatriz': nodos.AccesoMatriz,
-      'InstanciaStruct': nodos.InstanciaStruct
+      'InstanciaStruct': nodos.InstanciaStruct,
+      'ObjectKeys': nodos.ObjectKeys,
+      'AccesoPropiedad': nodos.AccesoPropiedad,
+      'AsignacionPropiedad': nodos.AsignacionPropiedad
     }
 
     const nodo = new tipos[tipoNodo](props)
@@ -61,9 +64,8 @@ Declaracion = dcl:Class _ { return dcl }
             / dcl:Funcion _ { return dcl }
             / stmt:Stmt _ { return stmt }
 
-VarDcl =  tipo:Tipo _ id:Identificador _ "=" _ inst:InstanciaStruct _ ";" { return crearNodo('declaracionStruct', { id, tipo, inst }); }
-       /tipo:Tipo _ id:Identificador _ "=" _ exp:Expresion _ ";" { return crearNodo('declaracionVariable', { id, exp, tipo }) }
-       / tipo:Tipo _ id:Identificador _ (";" / ":")  { return crearNodo('declaracionVariable', { id, tipo }) }
+VarDcl = tipo:(Tipo/ Identificador) _ id:Identificador _ "=" _ exp:Expresion _ ";" { return crearNodo('declaracionVariable', { id, exp, tipo }) }
+       / tipo:(Tipo/Identificador) _ id:Identificador _ (";" / ":")  { return crearNodo('declaracionVariable', { id, tipo }) }
        / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ source:Identificador _ ";" {return crearNodo('asignacionArray', { id, source, tipo }); }
        / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ array:ArrayLiteral _ ";" { return crearNodo('declaracionArray', { id, tipo, array }); }
        / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ "new" _ tipoArray:Tipo _ "[" _ exp:Expresion _ "]" _ ";" { return crearNodo('declaracionArray', { id, tipo, tipoArray, tamano:exp }); }
@@ -156,6 +158,8 @@ ForInit = dcl:VarDcl { return dcl }
 Identificador = [a-zA-Z][a-zA-Z0-9]* { return text() }
 
 Expresion = kkk:Asignacion {return kkk }
+        
+ObjectKeys = "Object.keys" _ "(" _ obj:Identificador _ ")" _ ";" { return crearNodo('ObjectKeys', { obj }); }
 
 Corchetes = "[" _ indice:Expresion _ "]" { return indice; }      
     
@@ -170,6 +174,7 @@ Asignacion =
     / array:Identificador _ "[" _ index:Expresion _ "]" _ "=" _ valor:Expresion _ ";" { return crearNodo('arrayAssignment', { array, index, valor }); }
     / id:Identificador _ indices:Corchetes+ _ "=" _ valor:Expresion _ ";" {return crearNodo('asignacionMatriz', { id, indices, valor });}
     / ttt:Ternario {return ttt}
+    
 
 Comparacion = izq:Relacional expansion:(
   _ op:("==" / "!=") _ der:Relacional { return { tipo: op, der } }
@@ -297,6 +302,8 @@ Dato =
   / Bool
   / null
   / embebidas
+  / InstanciaStruct 
+  / ObjectKeys
   / "new" _ id:Identificador _ "(" _ args:Argumentos? _ ")" { return crearNodo('instancia', { id, args: args || [] }) }
   /array:Identificador _ "." _ "indexOf" _ "(" _ elem:Expresion _ ")" { 
         return crearNodo('indexOf', { array, elem }); 
@@ -318,8 +325,8 @@ InstanciaStruct
     }
 
 PropStruct
-    = props:(PropStructItem (_ "," _ PropStructItem)*)? {
-        return props ? props.flat() : [];
+    = props:PropStructItem prop:(_ "," _ prop:PropStructItem {return prop})* {
+        return [props, ...prop];
     }
 
 PropStructItem

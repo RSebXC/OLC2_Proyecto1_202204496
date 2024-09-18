@@ -710,7 +710,53 @@ const configuracionNodos = [
                 description: 'Indices de la matriz'
             }
         ]
-    }  
+    },
+    //AccesoPropiedad = objeto:Identificador "." propiedad:Identificador { return crearNodo('AccesoPropiedad', { objeto, propiedad }); }
+    {
+        name: 'AccesoPropiedad',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'objeto',
+                type: 'string',
+                description: 'Identificador del objeto'
+            },
+            {
+                name: 'propiedad',
+                type: 'string',
+                description: 'Identificador de la propiedad'
+            }
+        ]
+    },
+    //AsignacionPropiedad = acceso:AccesoPropiedad _ "=" _ valor:Expresion _ ";" { return crearNodo('AsignacionPropiedad', { acceso, valor }); }
+    {
+        name: 'AsignacionPropiedad',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'acceso',
+                type: 'AccesoPropiedad',
+                description: 'Acceso a la propiedad'
+            },
+            {
+                name: 'valor',
+                type: 'Expresion',
+                description: 'Valor a asignar'
+            }
+        ]
+    },
+    //ObjectKeys = "Object.keys" _ "(" _ obj:Identificador _ ")" _ ";" { return crearNodo('ObjectKeys', { obj }); }
+    {
+        name: 'ObjectKeys',
+        extends: 'Expresion',
+        props: [
+            {
+                name: 'obj',
+                type: 'string',
+                description: 'Identificador del objeto'
+            }
+        ]
+    }
     
 
 ]

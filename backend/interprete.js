@@ -155,6 +155,9 @@ export class InterpreterVisitor extends BaseVisitor {
 
     obtenerTipo(valor) {
         console.log('obtenerTipo - Valor recibido:', valor);
+        if (typeof valor === 'object'){
+            return 'struct';
+        }
         if (typeof valor === 'number') {
             return Number.isInteger(valor) ? 'int' : 'float';
         }
@@ -355,7 +358,7 @@ visitIndexOf(node) {
         }
 
         let tipoValor;
-
+        console.log(valorVariable, "valorVariable");
         // Intentar obtener el tipo del valor. Si falla (asignación incorrecta), asignar null.
         try {
             tipoValor = valorVariable === null ? node.tipo : this.obtenerTipo(valorVariable);
@@ -375,6 +378,9 @@ visitIndexOf(node) {
         // Permitir conversiones de 'int' a 'float'
         else if (node.tipo === 'float' && tipoValor === 'int') {
             this.entornoActual.setVariable(nombreVariable, { valor: valorVariable, tipo: 'float' }, node.location.end.line, node.location.end.column);
+        } else if(valorVariable instanceof Instancia){
+            this.entornoActual.setVariable(nombreVariable, { valor: valorVariable, tipo: node.tipo}, node.location.end.line, node.location.end.column);
+
         }
         // Si hay una mala asignación, asignar null
         else {
@@ -1078,26 +1084,37 @@ _obtenerValorPorDefecto(tipo) {
     }
 
     /**
-    * @type {BaseVisitor['visitLlamada']}
-    */
+     * @type {BaseVisitor['visitLlamada']}
+     */
     visitLlamada(node) {
+        // Obtener la referencia de la función (puede ser nativa o una función del lenguaje)
         const funcion = node.callee.accept(this);
 
+        // Evaluar los argumentos
         const argumentos = node.args.map(arg => arg.accept(this));
         console.log('argumentos', argumentos);
         console.log('funcion', funcion);
-        
-        if (!(funcion instanceof Invocable)) {
-            throw new Error('No es invocable');
-            // 1() "sdalsk"()
+
+        // Verificar si la función es una función nativa de JavaScript
+        if (typeof funcion === 'function') {
+            // Invocar la función nativa con los argumentos
+            return funcion(...argumentos);
         }
 
+        // Si no es una función nativa, verificar que sea invocable en tu lenguaje
+        if (!(funcion instanceof Invocable)) {
+            throw new Error('No es invocable');
+        }
+
+        // Verificar la aridad de la función
         if (funcion.aridad() !== argumentos.length) {
             throw new Error('Aridad incorrecta');
         }
 
+        // Invocar la función del lenguaje con los argumentos
         return funcion.invocar(this, argumentos);
     }
+
 
     /**
      * @type {BaseVisitor['visitFuncDcl']}
@@ -1129,9 +1146,10 @@ visitClassDcl(node) {
 
     // Recorre cada declaración dentro del struct
     node.dcls.forEach(dcl => {
+        console.log('dcl', dcl, nodos.VarDcl);
         if (dcl instanceof nodos.FuncDcl) {
             metodos[dcl.id] = new FuncionForanea(dcl, this.entornoActual);
-        } else if (dcl instanceof nodos.VarDcl) {
+        } else if (dcl instanceof nodos.DeclaracionVariable) {
             propiedades[dcl.id] = dcl.exp ? dcl.exp.accept(this) : null;
         }
     });
@@ -1147,7 +1165,7 @@ visitClassDcl(node) {
  * @type {BaseVisitor['visitInstanciaStruct']}
  */
 visitInstanciaStruct(node) {
-    const struct = this.entornoActual.getVariable(node.id);
+    const struct = this.entornoActual.getVariable(node.id).valor;
     if (!(struct instanceof Clase)) {
         throw new Error(`El tipo ${node.id} no es un struct válido.`);
     }
@@ -1156,10 +1174,11 @@ visitInstanciaStruct(node) {
     
     // Asigna las propiedades pasadas al struct
     node.valores.forEach(prop => {
+        console.log('prop', prop);
         const valor = prop.valor.accept(this);
         instancia.set(prop.id, valor);
     });
-
+    console.log('instancia', instancia);
     return instancia;
 }
 
@@ -1184,20 +1203,28 @@ visitInstanciaStruct(node) {
 
 
     /**
-    * @type {BaseVisitor['visitGet']}
-    */
+     * @type {BaseVisitor['visitGet']}
+     */
     visitGet(node) {
+        // Obtener el objetivo (el objeto o instancia al que se le va a obtener la propiedad)
+        const objetivo = node.objetivo.accept(this);
 
-        // var a = new Clase();
-        // a.propiedad
-        const instancia = node.objetivo.accept(this);
-
-        if (!(instancia instanceof Instancia)) {
-            console.log(instancia);
-            throw new Error('No es posible obtener una propiedad de algo que no es una instancia');
+        // Si el objetivo es una instancia personalizada
+        if (objetivo instanceof Instancia) {
+            return objetivo.get(node.propiedad);  // Acceder a la propiedad desde la instancia
         }
 
-        return instancia.get(node.propiedad);
+        // Si el objetivo es un objeto o función nativa de JavaScript
+        if (typeof objetivo === 'object' && objetivo !== null) {
+            // Verificar si la propiedad existe en el objeto
+            if (node.propiedad in objetivo) {
+                return objetivo[node.propiedad];  // Devolver la propiedad si existe
+            }
+        }
+
+        // Si no es una instancia válida o no tiene la propiedad
+        console.log('Objetivo no es instancia válida o no tiene la propiedad:', objetivo);
+        throw new Error('No es posible obtener una propiedad de algo que no es una instancia o no tiene la propiedad');
     }
 
     /**
@@ -1216,5 +1243,66 @@ visitInstanciaStruct(node) {
 
         return valor;
     }
+    /**
+     * @type {BaseVisitor['visitAccesoPropiedad']}
+     */
+    visitAccesoPropiedad(node) {
+        const objeto = this.entornoActual.getVariable(node.objeto);
+        
+        if (!objeto) {
+            throw new Error(`El objeto ${node.objeto} no está definido.`);
+        }
+
+        const valor = objeto.valor.get(node.propiedad);
+
+        if (valor === undefined) {
+            throw new Error(`La propiedad ${node.propiedad} no existe en ${node.objeto}.`);
+        }
+
+        return valor;
+    }
+
+    /**
+     * @type {BaseVisitor['visitAsignacionPropiedad']}
+     */
+    visitAsignacionPropiedad(node) {
+        const objeto = this.entornoActual.getVariable(node.acceso.objeto);
+        
+        if (!objeto) {
+            throw new Error(`El objeto ${node.acceso.objeto} no está definido.`);
+        }
+
+        const valor = node.valor.accept(this);
+
+        // Verifica que la propiedad exista en el struct
+        if (!objeto.valor.has(node.acceso.propiedad)) {
+            throw new Error(`La propiedad ${node.acceso.propiedad} no existe en ${node.acceso.objeto}.`);
+        }
+
+        // Asigna el nuevo valor a la propiedad
+        objeto.valor.set(node.acceso.propiedad, valor);
+
+        return valor;
+    }
+
+    /**
+     * @type {BaseVisitor['visitObjectKeys']}
+     */
+    visitObjectKeys(node) {
+        const objeto = this.entornoActual.getVariable(node.objeto);
+        
+        if (!objeto) {
+            throw new Error(`El objeto ${node.objeto} no está definido.`);
+        }
+
+        // Aquí comprueba si el valor es un objeto válido
+        if (typeof objeto.valor !== 'object' || objeto.valor === null) {
+            throw new Error(`Object.keys solo se puede usar con objetos.`);
+        }
+
+        // Retorna las llaves del objeto
+        return Object.keys(objeto.valor);
+    }
+
 
 }

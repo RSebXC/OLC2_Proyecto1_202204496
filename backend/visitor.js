@@ -126,6 +126,15 @@
 
  * @typedef {import('./nodos').AccesoMatriz} AccesoMatriz
 
+
+ * @typedef {import('./nodos').AccesoPropiedad} AccesoPropiedad
+
+
+ * @typedef {import('./nodos').AsignacionPropiedad} AsignacionPropiedad
+
+
+ * @typedef {import('./nodos').ObjectKeys} ObjectKeys
+
  */
 
 
@@ -511,6 +520,33 @@ export class BaseVisitor {
      */
     visitAccesoMatriz(node) {
         throw new Error('Metodo visitAccesoMatriz no implementado');
+    }
+    
+
+    /**
+     * @param {AccesoPropiedad} node
+     * @returns {any}
+     */
+    visitAccesoPropiedad(node) {
+        throw new Error('Metodo visitAccesoPropiedad no implementado');
+    }
+    
+
+    /**
+     * @param {AsignacionPropiedad} node
+     * @returns {any}
+     */
+    visitAsignacionPropiedad(node) {
+        throw new Error('Metodo visitAsignacionPropiedad no implementado');
+    }
+    
+
+    /**
+     * @param {ObjectKeys} node
+     * @returns {any}
+     */
+    visitObjectKeys(node) {
+        throw new Error('Metodo visitObjectKeys no implementado');
     }
     
 }

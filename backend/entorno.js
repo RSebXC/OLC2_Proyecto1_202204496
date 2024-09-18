@@ -6,6 +6,11 @@ export class Entorno {
         this.valores = {};  // {nombre: {tipo, valor}}
         this.padre = padre;
         this.simbolos = {};
+
+        this.variables = {};
+        this.variables["Object"] = {
+            keys: (obj) => Object.keys(obj),
+        };        
     }
 
     /**
@@ -38,19 +43,25 @@ export class Entorno {
      * @returns {{tipo: string, valor: any}}
      */
     getVariable(nombre) {
-        const variable = this.valores[nombre];
+        // Primero busca en las variables globales
+        if (this.variables.hasOwnProperty(nombre)) {
+            return this.variables[nombre];
+        }
     
+        // Luego busca en las variables locales
+        const variable = this.valores[nombre];
         if (variable !== undefined) {
-            console.log(`Variable ${nombre} encontrada:`, variable);
             return variable;
         }
     
+        // Si no está en el entorno actual, busca en el padre
         if (this.padre) {
             return this.padre.getVariable(nombre);
         }
     
         throw new Error(`Variable ${nombre} no definida`);
     }
+    
 
     /**
      * Asigna un valor a una variable existente en el entorno actual o en un entorno padre.

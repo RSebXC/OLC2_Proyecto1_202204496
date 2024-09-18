@@ -30,6 +30,7 @@ btnExecute.addEventListener('click', () => {
                 sentencia.accept(interprete);  // Posibles errores semánticos
             } catch (error) {
                 // Captura errores semánticos durante la interpretación
+                console.error(error);
                 erroresGlobales.push({
                     mensaje: error.message || "Error semántico desconocido",
                     linea: error.linea || 0,  // Agrega información de línea si está disponible
@@ -48,6 +49,7 @@ btnExecute.addEventListener('click', () => {
 
     } catch (error) {
         // Captura errores sintácticos (parseo)
+        console.log(error);
         erroresGlobales.push({
             mensaje: error.message || "Error de análisis (sintáctico)",
             linea: error.linea || 0,

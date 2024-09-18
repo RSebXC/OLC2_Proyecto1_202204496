@@ -1382,4 +1382,95 @@ export class AccesoMatriz extends Expresion {
     }
 }
     
-export default { Expresion, OperacionBinaria, OperacionUnaria, Agrupacion, Dato, DeclaracionVariable, ReferenciaVariable, Print, ExpresionStmt, DeclaracionArray, arrayLiteral, AsignacionArray, IndexOf, Join, Length, ArrayAccess, ArrayAssignment, Asignacion, Switch, ParseInt, ParseFloat, ToString, ToLowerCase, ToUpperCase, TypeOf, Bloque, If, While, For, Break, Continue, Return, Llamada, FuncDcl, ClassDcl, InstanciaStruct, Instancia, Get, Set, MatrixDeclaracion, AsignacionMatriz, AccesoMatriz }
+export class AccesoPropiedad extends Expresion {
+
+    /**
+    * @param {Object} options
+    * @param {string} options.objeto Identificador del objeto
+ * @param {string} options.propiedad Identificador de la propiedad
+    */
+    constructor({ objeto, propiedad }) {
+        super();
+        
+        /**
+         * Identificador del objeto
+         * @type {string}
+        */
+        this.objeto = objeto;
+
+
+        /**
+         * Identificador de la propiedad
+         * @type {string}
+        */
+        this.propiedad = propiedad;
+
+    }
+
+    /**
+     * @param {BaseVisitor} visitor
+     */
+    accept(visitor) {
+        return visitor.visitAccesoPropiedad(this);
+    }
+}
+    
+export class AsignacionPropiedad extends Expresion {
+
+    /**
+    * @param {Object} options
+    * @param {AccesoPropiedad} options.acceso Acceso a la propiedad
+ * @param {Expresion} options.valor Valor a asignar
+    */
+    constructor({ acceso, valor }) {
+        super();
+        
+        /**
+         * Acceso a la propiedad
+         * @type {AccesoPropiedad}
+        */
+        this.acceso = acceso;
+
+
+        /**
+         * Valor a asignar
+         * @type {Expresion}
+        */
+        this.valor = valor;
+
+    }
+
+    /**
+     * @param {BaseVisitor} visitor
+     */
+    accept(visitor) {
+        return visitor.visitAsignacionPropiedad(this);
+    }
+}
+    
+export class ObjectKeys extends Expresion {
+
+    /**
+    * @param {Object} options
+    * @param {string} options.obj Identificador del objeto
+    */
+    constructor({ obj }) {
+        super();
+        
+        /**
+         * Identificador del objeto
+         * @type {string}
+        */
+        this.obj = obj;
+
+    }
+
+    /**
+     * @param {BaseVisitor} visitor
+     */
+    accept(visitor) {
+        return visitor.visitObjectKeys(this);
+    }
+}
+    
+export default { Expresion, OperacionBinaria, OperacionUnaria, Agrupacion, Dato, DeclaracionVariable, ReferenciaVariable, Print, ExpresionStmt, DeclaracionArray, arrayLiteral, AsignacionArray, IndexOf, Join, Length, ArrayAccess, ArrayAssignment, Asignacion, Switch, ParseInt, ParseFloat, ToString, ToLowerCase, ToUpperCase, TypeOf, Bloque, If, While, For, Break, Continue, Return, Llamada, FuncDcl, ClassDcl, InstanciaStruct, Instancia, Get, Set, MatrixDeclaracion, AsignacionMatriz, AccesoMatriz, AccesoPropiedad, AsignacionPropiedad, ObjectKeys }

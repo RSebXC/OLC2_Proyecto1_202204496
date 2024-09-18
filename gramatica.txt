@@ -1,0 +1,153 @@
+programa = _ dcl:Declaracion* _
+
+Declaracion = dcl:Class _
+            / dcl:VarDcl _
+            / dcl:Funcion _
+            / stmt:Stmt _
+
+VarDcl = tipo:Tipo _ id:Identificador _ "=" _ inst:InstanciaStruct _ ";"
+       / tipo:Tipo _ id:Identificador _ "=" _ exp:Expresion _ ";"
+       / tipo:Tipo _ id:Identificador _ (";" / ":")
+       / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ source:Identificador _ ";"
+       / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ array:ArrayLiteral _ ";"
+       / tipo:Tipo _ "[" _ "]" _ id:Identificador _ "=" _ "new" _ tipoArray:Tipo _ "[" _ exp:Expresion _ "]" _ ";"
+       / MatrixDeclaration
+
+MatrixDeclaration = tipo:(Tipo) _ "[""]" cor:("["_"]")+ _ id:Identificador _ "=" tipo2:( _"new" _ tipo2:Tipo)? _ valores:FormasMatrix _ ";"
+
+FormasMatrix = "[" _ size:Expresion _ "]" sizes:(_"[" _ sizeList:Expresion _ "]")+  
+            / SimpleMatrix
+            / values:Identificador
+
+SimpleMatrix = "{"_ value:SimpleMatrix _ values:("," _ exp:SimpleMatrix)* _ "}"
+            / values:Expresion
+
+Funcion = Tipo _ id:Identificador _ "(" _ params:Parametros? _ ")" _ bloque:Bloque
+
+Class = "struct" _ id:Identificador _ "{" _ dcls:ClassBody+ _ "}" _ ";"
+
+Parametros = tipo:Tipo _ id:Identificador _ params:("," _ tipos:Tipo _ ids:Identificador)*
+
+ClassBody = dcl:VarDcl _
+          / dcl:Funcion _
+          / dcl:InstanciaStruct _
+
+MatrixAssignment = array:Identificador _ indices:("[" _ valores:Expresion _ "]")+ _ "=" _ valor:Expresion _ ";"
+
+MatrixAccess = array:Identificador _ indices:("[" _ valores:Expresion _ "]")+
+
+ArrayAccess = array:Identificador _ indices:("[" _ Expresion _ "]")+
+
+ArrayAssignment = array:Identificador _ indices:("[" _ Expresion _ "]")+ _ "=" _ valor:Expresion _ ";"
+
+ArrayLiteral = "{" _ elems:(ArrayLiteral / ExpresionList)? _ "}"
+
+ExpresionList = first:Expresion _ rest:("," _ Expresion)*
+
+Stmt = "System.out.println(" _ exp:mensajes _ ")" _ ";"
+     / Bloque:Bloque
+     / "{" _ dcls:Declaracion* _ "}"
+     / "if" _ "(" _ cond:Expresion _ ")" _ stmtTrue:Stmt stmtFalse:(_ "else" _ stmtFalse:Stmt)?
+     / "while" _ "(" _ cond:Expresion _ ")" _ stmt:Stmt
+     / "for" _ "(" _ init:ForInit _ cond:Expresion _ ";"? _ inc:Expresion? _ ")" _ stmt:Stmt
+     / "switch" _ "(" _ expr:Expresion _ ")" _ "{" _ cases:Case* defaultCase:Default? _ "}"
+     / "break" _ ";"
+     / "continue" _ ";"
+     / "return" _ exp:Expresion? _ ";"
+     / MatrixAssignment
+     / MatrixAccess _ ";"
+     / array:Identificador _ "[" _ index:Expresion _ "]" _ "=" _ valor:Expresion _ ";"
+     / exp:Expresion _ ";"
+
+embebidas = "parseInt(" _ exp:Expresion _ ")"
+          / "parsefloat(" _ exp:Expresion _ ")"
+          / "toString(" _ exp:Expresion _ ")"
+          / "toLowerCase(" _ exp:Expresion _ ")"
+          / "toUpperCase(" _ exp:Expresion _ ")"
+          / "typeof " _ exp:Expresion
+
+mensajes = exp1:(MatrixAccess / Expresion) _ args:("," _ exp2:(MatrixAccess / Expresion))*
+
+Case = "case" _ expr:Expresion _ ":" _ stmts:Declaracion*
+
+Default = "default" _ ":" _ stmts:Declaracion*
+
+ForInit = dcl:VarDcl
+        / exp:Expresion _ ";"
+        / ";"
+
+Identificador = [a-zA-Z][a-zA-Z0-9]*
+
+Expresion = embebidas
+          / kkk:Asignacion
+
+Corchetes = "[" _ indice:Expresion _ "]"
+
+Bloque = "{" _ dcls:Declaracion* _ "}"
+
+Asignacion = id:Identificador _ op:("=" / "+=" / "-=") _ asgn:Expresion
+           / array:Identificador _ "[" _ index:Expresion _ "]" _ "=" _ valor:Expresion _ ";"
+           / id:Identificador _ indices:Corchetes+ _ "=" _ valor:Expresion _ ";"
+           / ttt:Ternario
+
+Comparacion = izq:Relacional expansion:(_ op:("==" / "!=") _ der:Relacional)*
+
+Suma = izq:Multiplicacion expansion:(_ op:("+" / "-") _ der:Multiplicacion)*
+
+Multiplicacion = izq:Unaria expansion:(_ op:("*" / "/" / "%") _ der:Unaria)*
+
+Relacional = izq:Suma expansion:(_ op:("<=" / ">=" / "<" / ">") _ der:Suma)*
+
+Or = izq:AND expansion:(_ op:("||") _ der:AND)*
+
+AND = izq:Comparacion expansion:(_ op:("&&") _ der:Comparacion)*
+
+Ternario = cond:Or _ "?" _ expTrue:Ternario _ ":" _ expFalse:Ternario
+        / orr:Or
+
+Unaria = op:("-"/"!") _ num:Unaria
+       / Llamada
+
+Llamada = objetivoInicial:Dato operaciones:(("("_ args:Argumentos? _ ")") / ("." _ id:Identificador))*
+
+Argumentos = arg:Expresion _ args:("," _ exp:Expresion)*
+
+Dato = "(" _ exp:Expresion _ ")"
+     / "[" _ exp:Expresion _ "]"
+     / Float
+     / Int
+     / String
+     / Char
+     / Bool
+     / null
+     / "new" _ id:Identificador _ "(" _ args:Argumentos? _ ")"
+     / array:Identificador _ "." _ "indexOf" _ "(" _ elem:Expresion _ ")"
+     / array:Identificador _ "." _ "join" _ "(" _ ")"
+     / array:Identificador _ "." _ "length"
+     / array:Identificador _ "[" _ index:Expresion _ "]"
+     / id:Identificador
+
+InstanciaStruct = id:Identificador _ "{" _ valores:PropStruct _ "}"
+
+PropStruct = props:(PropStructItem (_ "," _ PropStructItem)*)?
+
+PropStructItem = id:Identificador _ ":" _ valor:Expresion
+
+Float = [0-9]+( "." [0-9]+ )
+
+Int = [0-9]+
+
+String = "\"" chars:[^"]* "\""
+
+Char = "'" char:[^'] "'"
+
+Bool = "true" / "false"
+
+null = "null"
+
+_ = ([ \t\n\r] / Comentarios)*
+
+Comentarios = "//" (![\n] .)*
+            / "/*" (!("*/") .)* "*/"
+
+Tipo = "int" / "float" / "string" / "char" / "bool" / "var" / "void" / "struct"
