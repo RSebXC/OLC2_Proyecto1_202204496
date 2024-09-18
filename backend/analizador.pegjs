@@ -159,7 +159,7 @@ Identificador = [a-zA-Z][a-zA-Z0-9]* { return text() }
 
 Expresion = kkk:Asignacion {return kkk }
         
-ObjectKeys = "Object.keys" _ "(" _ obj:Identificador _ ")" _ ";" { return crearNodo('ObjectKeys', { obj }); }
+ObjectKeys = "Object.keys(" id:Identificador ")" { return crearNodo('ObjectKeys',{id})}
 
 Corchetes = "[" _ indice:Expresion _ "]" { return indice; }      
     
@@ -173,6 +173,7 @@ Asignacion =
     }
     / array:Identificador _ "[" _ index:Expresion _ "]" _ "=" _ valor:Expresion _ ";" { return crearNodo('arrayAssignment', { array, index, valor }); }
     / id:Identificador _ indices:Corchetes+ _ "=" _ valor:Expresion _ ";" {return crearNodo('asignacionMatriz', { id, indices, valor });}
+    / asignado:Llamada _ "=" _ asgn:Asignacion {return crearNodo('set', { objetivo: asignado.objetivo, propiedad: asignado.propiedad, valor:asgn})}
     / ttt:Ternario {return ttt}
     
 

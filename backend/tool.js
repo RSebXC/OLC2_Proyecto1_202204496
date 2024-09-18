@@ -751,7 +751,7 @@ const configuracionNodos = [
         extends: 'Expresion',
         props: [
             {
-                name: 'obj',
+                name: 'id',
                 type: 'string',
                 description: 'Identificador del objeto'
             }

@@ -1202,47 +1202,52 @@ visitInstanciaStruct(node) {
     }
 
 
-    /**
-     * @type {BaseVisitor['visitGet']}
-     */
     visitGet(node) {
-        // Obtener el objetivo (el objeto o instancia al que se le va a obtener la propiedad)
-        const objetivo = node.objetivo.accept(this);
 
-        // Si el objetivo es una instancia personalizada
-        if (objetivo instanceof Instancia) {
-            return objetivo.get(node.propiedad);  // Acceder a la propiedad desde la instancia
+        // var a = new Clase();
+        // a.propiedad
+        const instancia = node.objetivo.accept(this);
+        if(Array.isArray(instancia.valor)) return instancia;
+        if(instancia.valor){
+        if (!(instancia.valor instanceof Instancia)) {
+            console.log(instancia, "oasalslaas");
+            throw new ErrorSyntax('No es posible obtener una propiedad de algo que no es una instancia', node.location);
         }
-
-        // Si el objetivo es un objeto o función nativa de JavaScript
-        if (typeof objetivo === 'object' && objetivo !== null) {
-            // Verificar si la propiedad existe en el objeto
-            if (node.propiedad in objetivo) {
-                return objetivo[node.propiedad];  // Devolver la propiedad si existe
+        return instancia.valor.get(node.propiedad);
+    }else{
+            console.log(instancia);
+            if(!(instancia instanceof Instancia)){
+                throw new ErrorSyntax('No es posible obtener una propiedad de algo que no es una instancia', node.location)
             }
         }
-
-        // Si no es una instancia válida o no tiene la propiedad
-        console.log('Objetivo no es instancia válida o no tiene la propiedad:', objetivo);
-        throw new Error('No es posible obtener una propiedad de algo que no es una instancia o no tiene la propiedad');
+        return instancia.get(node.propiedad);
+        
     }
+    
 
-    /**
-    * @type {BaseVisitor['visitSet']}
-    */
     visitSet(node) {
+
         const instancia = node.objetivo.accept(this);
-
-        if (!(instancia instanceof Instancia)) {
-            throw new Error('No es posible asignar una propiedad de algo que no es una instancia');
+        let valor = node.valor.accept(this);
+        if(valor instanceof Instancia) console.log(valor); 
+        if(instancia.valor){
+        if (!(instancia.valor instanceof Instancia)) {
+            throw new ErrorSyntax('No es posible obtener una propiedad de algo que no es una instancia', node.location);
         }
-
-        const valor = node.valor.accept(this);
-
-        instancia.set(node.propiedad, valor);
-
-        return valor;
+        instancia.valor.set(node.propiedad, valor);
+       
+    }else{
+            console.log(instancia);
+            if(!(instancia instanceof Instancia)){
+                throw new ErrorSyntax('No es posible obtener una propiedad de algo que no es una instancia', node.location)
+            }
+            instancia.set(node.propiedad, valor);
+        }
+        
+        return valor
+    
     }
+
     /**
      * @type {BaseVisitor['visitAccesoPropiedad']}
      */
@@ -1289,19 +1294,16 @@ visitInstanciaStruct(node) {
      * @type {BaseVisitor['visitObjectKeys']}
      */
     visitObjectKeys(node) {
-        const objeto = this.entornoActual.getVariable(node.objeto);
-        
-        if (!objeto) {
-            throw new Error(`El objeto ${node.objeto} no está definido.`);
+        const nombreVariable = node.id;
+        const variable = this.entornoActual.getVariable(nombreVariable);
+        console.log(variable, "variable");
+        if (!(variable.valor instanceof Instancia)) {
+            throw new ErrorSyntax('No es un vector', node.location);
         }
+        console.log(variable.valor , "variable valor");
+        const valor = "[" + Object.keys(variable.valor.clase).join()+ "]"; 
+        return valor;
 
-        // Aquí comprueba si el valor es un objeto válido
-        if (typeof objeto.valor !== 'object' || objeto.valor === null) {
-            throw new Error(`Object.keys solo se puede usar con objetos.`);
-        }
-
-        // Retorna las llaves del objeto
-        return Object.keys(objeto.valor);
     }
 
 

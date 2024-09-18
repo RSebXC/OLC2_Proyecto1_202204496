@@ -1452,16 +1452,16 @@ export class ObjectKeys extends Expresion {
 
     /**
     * @param {Object} options
-    * @param {string} options.obj Identificador del objeto
+    * @param {string} options.id Identificador del objeto
     */
-    constructor({ obj }) {
+    constructor({ id }) {
         super();
         
         /**
          * Identificador del objeto
          * @type {string}
         */
-        this.obj = obj;
+        this.id = id;
 
     }
 
