@@ -1,5 +1,7 @@
 import { parse } from './backend/analizador.js';
 import { InterpreterVisitor } from './backend/interprete.js';
+import { CompilerVisitor } from './backend/compilador.js';
+
 
 // Selección de elementos del DOM
 const editor = document.getElementById('code-editor');
@@ -7,6 +9,7 @@ const btnExecute = document.getElementById('execute');
 const btnReport = document.getElementById('reportFile');
 const ast = document.getElementById('ast');
 const salida = document.getElementById('output');
+const salida2 = document.getElementById('output2');
 
 // Variables globales
 let interpreteGlobal = null;
@@ -17,17 +20,20 @@ btnExecute.addEventListener('click', () => {
     const codigoFuente = editor.value;
     erroresGlobales = [];  // Limpiar el array de errores en cada ejecución
     salida.innerHTML = '';  // Limpiar la consola de salida
+    salida2.innerHTML = '';  // Limpiar la consola de salida
 
     try {
         const sentencias = parse(codigoFuente);  // Posibles errores sintácticos
         console.log({ sentencias });
 
         const interprete = new InterpreterVisitor();  // Crea una nueva instancia del intérprete
+        const compilador = new CompilerVisitor();  // Crea una nueva instancia del compilador
 
         // Interpretar las sentencias
         sentencias.forEach(sentencia => {
             try {
-                sentencia.accept(interprete);  // Posibles errores semánticos
+                sentencia.accept(interprete); 
+                sentencia.accept(compilador);
             } catch (error) {
                 // Captura errores semánticos durante la interpretación
                 console.error(error);
@@ -42,6 +48,7 @@ btnExecute.addEventListener('click', () => {
 
         // Mostrar salida del intérprete
         salida.innerHTML = interprete.salida;
+        salida2.innerHTML = compilador.code.toString().replace(/\n/g, '\n');
 
         // Almacenar la instancia del intérprete globalmente para su uso posterior
         interpreteGlobal = interprete;

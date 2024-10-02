@@ -298,7 +298,7 @@ visitArrayAccess(node) {
     }
 
     const index = node.index.accept(this);
-    if (index < 0 || index >= arrayVar.valor.length) {
+    if (index < 0 || index >= arrayVar.valor.length + 1) {
         console.error(`Error: Índice fuera de rango: ${index}`);
         return null;
     }
@@ -808,7 +808,7 @@ visitAccesoMatriz(node) {
     }
 
     // Retornar el valor encontrado
-    return matriz;
+    return matriz - 1;
 }
 
 
