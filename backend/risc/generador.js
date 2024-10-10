@@ -1,7 +1,8 @@
+import { builtins } from "./builtins.js";
 import { registers as r } from "./constantes.js";
 import { stringTo32BitsArray } from "./utils.js";
 
-class Instruction {
+export class Instruction {
 
     constructor(instruccion, rd, rs1, rs2) {
         this.instruccion = instruccion;
@@ -29,6 +30,10 @@ export class Generador {
 
     }
 
+    getLabel() {
+        return `L${this._labelCounter++}`
+    }
+
     add(rd, rs1, rs2) {
         this.instrucciones.push(new Instruction('add', rd, rs1, rs2))
     }
@@ -49,6 +54,54 @@ export class Generador {
         this.instrucciones.push(new Instruction('addi', rd, rs1, inmediato))
     }
 
+        // Instrucciones comparativas en el generador
+    seqz(rd, rs) { // Igualdad: rd = (rs == 0) ? 1 : 0
+        this.instrucciones.push(new Instruction('seqz', rd, rs));
+    }
+
+    snez(rd, rs) { // Desigualdad: rd = (rs != 0) ? 1 : 0
+        this.instrucciones.push(new Instruction('snez', rd, rs));
+    }
+
+    // Menor o igual ( <= )
+    sle(rd, rs1, rs2) {
+        this.instrucciones.push(new Instruction('slt', rd, rs2, rs1)); // rs1 <= rs2 es equivalente a !(rs1 > rs2)
+        this.instrucciones.push(new Instruction('seqz', rd, rd)); // Invertir el resultado
+    }
+
+
+    // Mayor o igual ( >= )
+    sge(rd, rs1, rs2) {
+        this.instrucciones.push(new Instruction('slt', rd, rs1, rs2)); // Comparar rs1 < rs2
+        this.instrucciones.push(new Instruction('seqz', rd, rd)); // Invertir el resultado
+    }
+
+    sb (rs1, rs2, inmediato = 0) {
+        this.instrucciones.push(new Instruction('sb', rs1, `${inmediato}(${rs2})`))
+    }
+
+    // Mayor que ( > )
+    slt(rd, rs2, rs1) { 
+        this.instrucciones.push(new Instruction('slt', rd, rs2, rs1));
+    }
+
+
+    // Menor que ( < )
+    slt(rd, rs1, rs2) { 
+        this.instrucciones.push(new Instruction('slt', rd, rs1, rs2));
+    }
+
+
+        // Operación lógica AND
+    and(rd, rs1, rs2) { // AND lógico
+        this.instrucciones.push(new Instruction('and', rd, rs1, rs2));
+    }
+
+    // Operación lógica OR
+    or(rd, rs1, rs2) { // OR lógico
+        this.instrucciones.push(new Instruction('or', rd, rs1, rs2));
+    }
+
     sw(rs1, rs2, inmediato = 0) {
         this.instrucciones.push(new Instruction('sw', rs1, `${inmediato}(${rs2})`))
     }
@@ -57,8 +110,16 @@ export class Generador {
         this.instrucciones.push(new Instruction('lw', rd, `${inmediato}(${rs1})`))
     }
 
+    lb(rd, rs1, inmediato = 0) {
+        this.instrucciones.push(new Instruction('lb', rd, `${inmediato}(${rs1})`))
+    }
+
     li(rd, inmediato) {
         this.instrucciones.push(new Instruction('li', rd, inmediato))
+    }
+
+    bge (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('bge', rs1, rs2, label));
     }
 
     push(rd = r.T0) {
@@ -77,6 +138,14 @@ export class Generador {
 
     ecall() {
         this.instrucciones.push(new Instruction('ecall'))
+    }
+
+    callBuiltin(builtinName) {
+        if (!builtins[builtinName]) {
+            throw new Error(`Builtin ${builtinName} not found`)
+        }
+        this._usedBuiltins.add(builtinName)
+        this.jal(builtinName)
     }
 
     printInt(rd = r.A0) {
@@ -119,6 +188,49 @@ export class Generador {
         this.instrucciones.push(new Instruction(`# ${text}`))
     }
 
+    beqz(rs, label) {
+        this.instrucciones.push(new Instruction('beqz', rs, label));
+    }
+    
+    
+    j(label) {
+        this.instrucciones.push(new Instruction('j', label));
+    }
+
+    jal(label) {
+        this.instrucciones.push(new Instruction('jal', label));
+    }
+
+    createLabel(prefix) {
+        return `${prefix}_${this.instrucciones.length}`;
+    }
+
+    // Instrucción para comparar si un valor es igual a otro y saltar a una etiqueta si es cierto
+    beq(rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('beq', rs1, rs2, label));
+    }
+
+    blt (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('blt', rs1, rs2, label));
+    }
+
+    ret() {
+        this.instrucciones.push(new Instruction('ret'));
+    }
+
+    // Instrucción para insertar una etiqueta en el código
+    addLabel(label) {
+        label = label || this.getLabel()
+        this.instrucciones.push(new Instruction(`${label}:`))
+        return label
+    }
+
+    // Manejar el salto condicional al "default"
+    defaultJump(label) {
+        this.instrucciones.push(new Instruction('j', label));
+    }
+    
+
     pushContant(object) {
         let length = 0;
 
@@ -129,22 +241,22 @@ export class Generador {
                 length = 4;
                 break;
 
-            case 'string':
-                const stringArray = stringTo32BitsArray(object.valor);
-
-                this.comment(`Pushing string ${object.valor}`);
-                this.addi(r.T0, r.HP, 4);
-                this.push(r.T0);
-
-                stringArray.forEach((block32bits) => {
-                    this.li(r.T0, block32bits);
-                    // this.push(r.T0);
-                    this.addi(r.HP, r.HP, 4);
-                    this.sw(r.T0, r.HP);
-                });
-
-                length = 4;
-                break;
+                case 'string':
+                    const stringArray = stringTo32BitsArray(object.valor);
+                
+                    this.comment(`Pushing string ${object.valor}`);
+                    this.addi(r.T0, r.HP, 4); // Dirección inicial del heap
+                    this.push(r.T0); // Pushear la dirección de la cadena al stack
+                
+                    stringArray.forEach((block32bits) => {
+                        this.li(r.T0, block32bits);
+                        this.addi(r.HP, r.HP, 4);
+                        this.sw(r.T0, r.HP); // Almacenar cada bloque de la cadena en el heap
+                    });
+                
+                    length = 4;
+                    break;
+                
 
             default:
                 break;
@@ -218,9 +330,16 @@ export class Generador {
     }
 
     toString() {
+        this.comment('Fin del programa')
         this.endProgram()
-        return `
+        this.comment('Builtins')
 
+        Array.from(this._usedBuiltins).forEach(builtinName => {
+            this.addLabel(builtinName)
+            builtins[builtinName](this)
+            this.ret()
+        })
+        return `
 .data
         heap:
 .text
