@@ -2,18 +2,27 @@ import { parse } from './backend/analizador.js';
 import { InterpreterVisitor } from './backend/interprete.js';
 import { CompilerVisitor } from './backend/compilador.js';
 
-
 // Selección de elementos del DOM
 const editor = document.getElementById('code-editor');
 const btnExecute = document.getElementById('execute');
 const btnReport = document.getElementById('reportFile');
-const ast = document.getElementById('ast');
 const salida = document.getElementById('output');
 const salida2 = document.getElementById('output2');
 
 // Variables globales
 let interpreteGlobal = null;
 let erroresGlobales = [];  // Array global para almacenar los errores
+
+// Mantener el contenido del textarea usando localStorage
+document.addEventListener('DOMContentLoaded', () => {
+    // Cargar el contenido desde localStorage si existe
+    editor.value = localStorage.getItem('inputConsole') || '';
+
+    // Guardar el contenido en localStorage cuando se modifique
+    editor.addEventListener('input', () => {
+        localStorage.setItem('inputConsole', editor.value);
+    });
+});
 
 // Manejador de eventos para el botón de ejecución
 btnExecute.addEventListener('click', () => {
@@ -72,7 +81,6 @@ btnExecute.addEventListener('click', () => {
     }
 });
 
-
 // Función para mostrar los errores en la consola de salida
 function mostrarErroresEnConsola() {
     const erroresTexto = erroresGlobales.map(error => {
@@ -87,7 +95,6 @@ function mostrarErroresEnConsola() {
     }).join('\n');
     salida.innerHTML += `\n\nErrores:\n${erroresTexto}`;
 }
-
 
 // Manejador de eventos para el botón de reporte
 btnReport.addEventListener('click', () => {
@@ -125,7 +132,6 @@ btnReport.addEventListener('click', () => {
         }
     }, 1000);  // Retraso mayor, por ejemplo, 1000 ms
 });
-
 
 function generarReporteHTML(entorno) {
     let html = `

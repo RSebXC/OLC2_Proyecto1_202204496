@@ -1,6 +1,6 @@
 import { builtins } from "./builtins.js";
 import { registers as r } from "./constantes.js";
-import { stringTo32BitsArray } from "./utils.js";
+import { stringTo32BitsArray, stringTo1ByteArray } from "./utils.js";
 
 export class Instruction {
 
@@ -24,10 +24,18 @@ export class Instruction {
 export class Generador {
 
     constructor() {
+        this._labelCounter = 0;
+        this._usedBuiltins = new Set()
         this.instrucciones = []
         this.objectStack = []
+        this.breakStack = []
+        this.continueStack = []
         this.depth = 0
 
+    }
+
+    move(rd, rs) {
+        this.instrucciones.push(new Instruction('mv', rd, rs))
     }
 
     getLabel() {
@@ -70,25 +78,28 @@ export class Generador {
     }
 
 
+
     // Mayor o igual ( >= )
     sge(rd, rs1, rs2) {
         this.instrucciones.push(new Instruction('slt', rd, rs1, rs2)); // Comparar rs1 < rs2
         this.instrucciones.push(new Instruction('seqz', rd, rd)); // Invertir el resultado
     }
 
+    xor(rd, rs1, rs2) { // XOR lógico
+        this.instrucciones.push(new Instruction('xor', rd, rs1, rs2));
+    }
+
     sb (rs1, rs2, inmediato = 0) {
         this.instrucciones.push(new Instruction('sb', rs1, `${inmediato}(${rs2})`))
     }
 
-    // Mayor que ( > )
-    slt(rd, rs2, rs1) { 
-        this.instrucciones.push(new Instruction('slt', rd, rs2, rs1));
-    }
-
-
     // Menor que ( < )
     slt(rd, rs1, rs2) { 
         this.instrucciones.push(new Instruction('slt', rd, rs1, rs2));
+    }
+
+    bgt (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('bgt', rs1, rs2, label));
     }
 
 
@@ -179,6 +190,62 @@ export class Generador {
         }
     }
 
+    printBool(rd = r.A0) {
+        if (rd !== r.A0) {
+            this.push(r.A0)
+            this.add(r.A0, rd, r.ZERO)
+        }
+
+        //Imprimir "true" o "false"
+        const falseLabel = this.getLabel()
+        const endLabel = this.getLabel()
+
+        this.beqz(r.A0, falseLabel)
+
+        // Imprimir "true"
+        this.la(r.A0, 'truee')
+        this.li(r.A7, 4)
+        this.ecall()
+        this.j(endLabel)
+
+         // Imprimir false
+        this.addLabel(falseLabel)
+        this.la(r.A0, 'falsee')
+        this.li(r.A7, 4)
+        this.ecall()
+
+        this.addLabel(endLabel)
+
+        if (rd !== r.A0) {
+            this.pop(r.A0)
+        }
+
+
+    }
+
+    printFloat(rd = r.F0) {
+        this.instrucciones.push(new Instruction('fmv.s', r.F12, rd))
+        this.li(r.A7, 2)
+        this.ecall()
+
+    }
+
+    printChar(rd = r.A0) {
+        if (rd !== r.A0) {
+            this.push(r.A0)
+            this.add(r.A0, rd, r.ZERO)
+        }
+
+        this.li(r.A7, 11)
+        this.ecall()
+
+        if (rd !== r.A0) {
+            this.pop(r.A0)
+        }
+        
+
+    }
+
     endProgram() {
         this.li(r.A7, 10)
         this.ecall()
@@ -195,6 +262,10 @@ export class Generador {
     
     j(label) {
         this.instrucciones.push(new Instruction('j', label));
+    }
+
+    bne (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('bne', rs1, rs2, label));
     }
 
     jal(label) {
@@ -225,13 +296,14 @@ export class Generador {
         return label
     }
 
+
     // Manejar el salto condicional al "default"
     defaultJump(label) {
         this.instrucciones.push(new Instruction('j', label));
     }
     
 
-    pushContant(object) {
+    pushConstant(object) {
         let length = 0;
 
         switch (object.type) {
@@ -242,21 +314,30 @@ export class Generador {
                 break;
 
                 case 'string':
-                    const stringArray = stringTo32BitsArray(object.valor);
-                
-                    this.comment(`Pushing string ${object.valor}`);
-                    this.addi(r.T0, r.HP, 4); // Dirección inicial del heap
-                    this.push(r.T0); // Pushear la dirección de la cadena al stack
-                
-                    stringArray.forEach((block32bits) => {
-                        this.li(r.T0, block32bits);
-                        this.addi(r.HP, r.HP, 4);
-                        this.sw(r.T0, r.HP); // Almacenar cada bloque de la cadena en el heap
-                    });
-                
-                    length = 4;
-                    break;
-                
+                    const stringArray = stringTo1ByteArray(object.valor);
+
+                this.comment(`Pushing string ${object.valor}`);
+                // this.addi(r.T0, r.HP, 4);
+                // this.push(r.T0);
+                this.push(r.HP);
+
+                stringArray.forEach((charCode) => {
+                    this.li(r.T0, charCode);
+                    // this.push(r.T0);
+                    // this.addi(r.HP, r.HP, 4);
+                    // this.sw(r.T0, r.HP);
+
+                    this.sb(r.T0, r.HP);
+                    this.addi(r.HP, r.HP, 1);
+                });
+
+                length = 4;
+                break;
+            case 'bool':
+                this.li(r.T0, object.valor ? 1 : 0);
+                this.push()
+                length = 4;
+                break;
 
             default:
                 break;
@@ -279,6 +360,9 @@ export class Generador {
                 break;
 
             case 'string':
+                this.pop(rd);
+                break;
+            case 'bool':
                 this.pop(rd);
                 break;
             default:
@@ -312,6 +396,13 @@ export class Generador {
         return byteOffset;
     }
 
+    getBreakLabel() {
+        return this.breakStack[this.breakStack.length - 1];
+    }
+
+    getContinueLabel() {
+        return this.continueStack[this.continueStack.length - 1];
+    }
 
     tagObject(id) {
         this.objectStack[this.objectStack.length - 1].id = id;
@@ -341,6 +432,8 @@ export class Generador {
         })
         return `
 .data
+        truee: .string "true"
+        falsee: .string "false"
         heap:
 .text
 

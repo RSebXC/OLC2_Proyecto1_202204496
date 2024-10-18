@@ -1,8 +1,6 @@
 import { registers as r } from "./risc/constantes.js";
 import { Generador } from "./risc/generador.js";
 import { BaseVisitor } from "./visitor.js";
-import { Instruction } from "./risc/generador.js";
-
 
 export class CompilerVisitor extends BaseVisitor {
     constructor() {
@@ -23,15 +21,10 @@ export class CompilerVisitor extends BaseVisitor {
      */
     visitDato(node) {
         this.code.comment(`Primitivo: ${node.valor}`);
-        let valor = node.valor.replace(/\\n/g, '\n')
-                              .replace(/\\t/g, '\t')
-                              .replace(/\\r/g, '\r')
-                              .replace(/\\"/g, '"')
-                              .replace(/\\\\/g, '\\');
         if (node.tipo === 'bool') {
-            this.code.pushContant({ type: 'int', valor: node.valor ? 1 : 0 });
+            this.code.pushConstant({ type: 'int', valor: node.valor ? 1 : 0 });
         } else {
-        this.code.pushContant({ type: node.tipo, valor: node.valor });
+        this.code.pushConstant({ type: node.tipo, valor: node.valor });
         }
         this.code.comment(`Fin Primitivo: ${node.valor}`);
     }
@@ -40,6 +33,7 @@ export class CompilerVisitor extends BaseVisitor {
      * @type {BaseVisitor['visitOperacionBinaria']}
      */
     visitOperacionBinaria(node) {
+        this.code.comment(`Operacion Binaria: ${node.op}`);
         // Modificaciones para agregar += y -=
         if (node.op === '+=') {
             node.izq.accept(this); // lado izquierdo
@@ -61,33 +55,60 @@ export class CompilerVisitor extends BaseVisitor {
             return;
         }
 
-        // Operadores lógicos
-        if (node.op === '&&' || node.op === '||') {
+        if (node.op === '&&') {
+            node.izq.accept(this); // izq
+            this.code.popObject(r.T0); // izq
+
+            const labelFalse = this.code.getLabel();
             const labelEnd = this.code.getLabel();
-            const labelElse = this.code.getLabel();
-            node.izq.accept(this);
-            this.code.popObject(r.T0);
 
-            if (node.op === '&&') this.code.beq(r.T0, r.ZERO, labelElse);
-            if (node.op === '||') this.code.bne(r.T0, r.ZERO, labelEnd);
+            this.code.beq(r.T0, r.ZERO, labelFalse); // if (!izq) goto labelFalse
+            node.der.accept(this); // der
+            this.code.popObject(r.T0); // der
+            this.code.beq(r.T0, r.ZERO, labelFalse); // if (!der) goto labelFalse
 
-            node.der.accept(this);
-            this.code.popObject(r.T0);
-            this.code.beq(r.T0, r.ZERO, labelElse);
-            this.code.li(r.T0, node.op === '&&' ? 1 : 0);
+            this.code.li(r.T0, 1);
             this.code.push(r.T0);
             this.code.j(labelEnd);
-            this.code.addLabel(labelElse);
-            this.code.li(r.T0, node.op === '&&' ? 0 : 1);
+            this.code.addLabel(labelFalse);
+            this.code.li(r.T0, 0);
             this.code.push(r.T0);
+
             this.code.addLabel(labelEnd);
-            return;
+            this.code.pushObject({ type: 'bool', length: 4 });
+            return
         }
 
-        node.izq.accept(this);
-        node.der.accept(this);
-        const der = this.code.popObject(r.T0);
-        const izq = this.code.popObject(r.T1);
+        if (node.op === '||') {
+            node.izq.accept(this); // izq
+            this.code.popObject(r.T0); // izq
+
+            const labelTrue = this.code.getLabel();
+            const labelEnd = this.code.getLabel();
+
+            this.code.bne(r.T0, r.ZERO, labelTrue); // if (izq) goto labelTrue
+            node.der.accept(this); // der
+            this.code.popObject(r.T0); // der
+            this.code.bne(r.T0, r.ZERO, labelTrue); // if (der) goto labelTrue
+
+            this.code.li(r.T0, 0);
+            this.code.push(r.T0);
+
+            this.code.j(labelEnd);
+            this.code.addLabel(labelTrue);
+            this.code.li(r.T0, 1);
+            this.code.push(r.T0);
+
+            this.code.addLabel(labelEnd);
+            this.code.pushObject({ type: 'boolean', length: 4 });
+            return
+        }
+
+        node.izq.accept(this); // izq |
+        node.der.accept(this); // izq | der
+
+        const der = this.code.popObject(r.T0); // der
+        const izq = this.code.popObject(r.T1); // izq
 
         if (izq.type === 'string' && der.type === 'string') {
             this.code.add(r.A0, r.ZERO, r.T1);
@@ -96,55 +117,59 @@ export class CompilerVisitor extends BaseVisitor {
             this.code.pushObject({ type: 'string', length: 4 });
             return;
         }
-
     
         switch (node.op) {
             case '+':
-                if (valueObject1.type === 'string' && valueObject2.type === 'string') {
-                    this.code.concatStrings(r.T1, r.T0, r.T0); // Concatenar los dos strings
-                } else {
-                    this.code.add(r.T0, r.T1, r.T0); // Si son enteros, suma normal
-                }
+                this.code.add(r.T0, r.T1, r.T0); // Si son enteros, suma normal
+                this.code.push(r.T0);
                 break;
             case '-':
                 this.code.sub(r.T0, r.T1, r.T0);
+                this.code.push(r.T0);
                 break;
             case '*':
                 this.code.mul(r.T0, r.T1, r.T0);
+                this.code.push(r.T0);
                 break;
             case '/':
                 this.code.div(r.T0, r.T1, r.T0);
+                this.code.push(r.T0);
                 break;
             case '%':
                 this.code.rem(r.T0, r.T1, r.T0);
+                this.code.push(r.T0);   
                 break;
     
             // Comparaciones
             case '==':
+                this.code.xor(r.T0, r.T0, r.T1); // Igual
                 this.code.seqz(r.T0, r.T0); // Igual
+                this.code.push(r.T0);
                 break;
             case '!=':
+                this.code.xor(r.T0, r.T0, r.T1); // Desigual
                 this.code.snez(r.T0, r.T0); // Desigual
+                this.code.push(r.T0);
                 break;
             case '<':
                 this.code.slt(r.T0, r.T1, r.T0); // Menor
+                this.code.push(r.T0);
                 break;
             case '>':
                 this.code.slt(r.T0, r.T0, r.T1); // Mayor
+                this.code.push(r.T0);
                 break;
             case '<=':
                 this.code.sge(r.T0, r.T1, r.T0); // Menor o igual
+                this.code.push(r.T0);
                 break;
             case '>=':
                 this.code.sle(r.T0, r.T0, r.T1); // Mayor o igual
+                this.code.push(r.T0);
                 break;
         }
-    
-        this.code.push(r.T0);
         this.code.pushObject({ type: 'int', length: 4 });
     }
-    
-    
 
     /**
      * @type {BaseVisitor['visitOperacionUnaria']}
@@ -157,13 +182,16 @@ export class CompilerVisitor extends BaseVisitor {
             case '-':
                 this.code.li(r.T1, 0);
                 this.code.sub(r.T0, r.T1, r.T0);
+                this.code.push(r.T0);
+                this.code.pushObject({ type: 'int', length: 4 });
                 break;
             case '!':
                 this.code.li(r.T1, 1);
                 this.code.sub(r.T0, r.T1, r.T0);
+                this.code.push(r.T0);
+                this.code.pushObject({ type: 'int', length: 4 });
                 break;
         }
-        this.code.push(r.T0);
     }
 
     /**
@@ -182,6 +210,8 @@ export class CompilerVisitor extends BaseVisitor {
                 'int': () => this.code.printInt(),
                 'string': () => this.code.printString(),
                 'bool': () => this.code.printBool(),
+                'char': () => this.code.printChar(),
+                'float': () => this.code.printFloat(),
             }
             tipoPrint[object.type]();
         });
@@ -221,7 +251,6 @@ export class CompilerVisitor extends BaseVisitor {
         this.code.comment(`Fin Asignacion Variable: ${node.id}`);
     }
 
-
     /**
      * @type {BaseVisitor['visitReferenciaVariable']}
      */
@@ -238,7 +267,6 @@ export class CompilerVisitor extends BaseVisitor {
         // this.code.comment(`Fin Referencia Variable: ${node.id}`);
         this.code.comment(`Fin referencia de variable ${node.id}: ${JSON.stringify(this.code.objectStack)}`);
     }
-
 
     /**
      * @type {BaseVisitor['visitBloque']}
@@ -259,193 +287,202 @@ export class CompilerVisitor extends BaseVisitor {
 
         this.code.comment('Fin de bloque');
     }
-
     
     visitIf(node) {
-        this.code.comment('If statement');
-        
-        // Evaluar la condición
+        this.code.comment('If');
+        this.code.comment('Condición');
         node.cond.accept(this);
         this.code.popObject(r.T0);
-    
-        // Crear etiquetas para las ramas y el final
-        const labelElse = `else_${this.code.instrucciones.length}`;
-        const labelEnd = `end_if_${this.code.instrucciones.length}`;
+        this.code.comment('Fin de condición');
         
-        // Saltar a la rama 'else' si la condición es falsa (T0 == 0)
-        this.code.instrucciones.push(new Instruction('beqz', r.T0, labelElse));
-    
-        // Instrucciones del bloque 'if' verdadero
-        node.stmtTrue.accept(this);
-    
-        // Saltar al final si la condición era verdadera
-        this.code.instrucciones.push(new Instruction('j', labelEnd));
-    
-        // Instrucciones del bloque 'else if'
-        if (node.stmtElseIf) {
-            node.stmtElseIf.forEach((elseIfNode, index) => {
-                const labelElseIf = `else_if_${index}_${this.code.instrucciones.length}`;
-                this.code.instrucciones.push(new Instruction(`${labelElseIf}:`));
-                elseIfNode.accept(this);
-            });
-        }
-    
-        // Etiqueta 'else'
-        this.code.instrucciones.push(new Instruction(`${labelElse}:`));
-        if (node.stmtFalse) {
+        const hasElse = !!node.stmtFalse
+
+        if (hasElse) {
+            const elseLabel = this.code.getLabel();
+            const endIfLabel = this.code.getLabel();
+
+            this.code.beq(r.T0, r.ZERO, elseLabel);
+            this.code.comment('Rama verdadera');
+            node.stmtTrue.accept(this);
+            this.code.j(endIfLabel);
+            this.code.addLabel(elseLabel);
+            this.code.comment('Rama falsa');
             node.stmtFalse.accept(this);
+            this.code.addLabel(endIfLabel);
+        } else {
+            const endIfLabel = this.code.getLabel();
+            this.code.beq(r.T0, r.ZERO, endIfLabel);
+            this.code.comment('Rama verdadera');
+            node.stmtTrue.accept(this);
+            this.code.addLabel(endIfLabel);
         }
+
     
-        // Etiqueta final
-        this.code.instrucciones.push(new Instruction(`${labelEnd}:`));
     }
-    
 
     visitWhile(node) {
         this.code.comment('While loop');
-    
-        // Crear etiquetas para el inicio y final del ciclo
-        const labelStart = `while_${this.code.instrucciones.length}`;
-        const labelEnd = `end_while_${this.code.instrucciones.length}`;
         
-        // Etiqueta para el inicio del ciclo
-        this.code.instrucciones.push(new Instruction(`${labelStart}:`));
-    
+        const startLabel = this.code.getLabel();
+        const endLabel = this.code.getLabel();
+        
+        // Etiqueta del inicio del ciclo
+        this.code.addLabel(startLabel);
+        
         // Evaluar la condición
+        this.code.comment('Condición del while');
         node.cond.accept(this);
-        this.code.popObject(r.T0);
-    
-        // Saltar al final si la condición es falsa (T0 == 0)
-        this.code.instrucciones.push(new Instruction('beqz', r.T0, labelEnd));
-    
-        // Ejecutar el cuerpo del ciclo
-        node.stmt.accept(this);
-    
-        // Saltar de vuelta al inicio del ciclo
-        this.code.instrucciones.push(new Instruction('j', labelStart));
-    
-        // Etiqueta final del ciclo
-        this.code.instrucciones.push(new Instruction(`${labelEnd}:`));
-    }
-
-    
-    visitFor(node) {
-        this.code.comment('For loop');
+        this.code.popObject(r.T0);  // Pop la condición al registro T0
         
-        // Inicialización
-        if (node.init) {
-            node.init.accept(this);
-        }
-    
-        // Crear etiquetas para ciclo
-        const labelStart = `for_${this.code.instrucciones.length}`;
-        const labelEnd = `end_for_${this.code.instrucciones.length}`;
-    
-        this.code.instrucciones.push(new Instruction(`${labelStart}:`));
-    
-        // Condición
-        if (node.cond) {
-            node.cond.accept(this);
-            this.code.popObject(r.T0);
-    
-            this.code.instrucciones.push(new Instruction('beqz', r.T0, labelEnd));
-        }
-    
-        // Cuerpo del ciclo
+        // Si la condición es falsa, salta al final del ciclo
+        this.code.beqz(r.T0, endLabel);
+        
+        // Ejecutar el cuerpo del ciclo
+        this.code.comment('Cuerpo del while');
         node.stmt.accept(this);
-    
-        // Incremento
-        if (node.inc) {
-            node.inc.accept(this);
-        }
-    
-        this.code.instrucciones.push(new Instruction('j', labelStart));
-    
-        this.code.instrucciones.push(new Instruction(`${labelEnd}:`));
+        
+        // Salto de regreso al inicio del ciclo
+        this.code.j(startLabel);
+        
+        // Etiqueta del final del ciclo
+        this.code.addLabel(endLabel);
+        this.code.comment('Fin del while');
     }
-    
 
-    
-    visitSwitch(node) {
-        // Evaluar la expresión del switch
-        node.exp.accept(this);
+    //       return crearNodo('for', { init, cond, inc, stmt })
+    visitFor(node) {
+        const startLabel = this.code.getLabel();
+        const endLabel = this.code.getLabel();
+        const stepLabel = this.code.getLabel();
+
+        node.init.accept(this); // inicialización
+        this.code.addLabel(startLabel);
+        node.cond.accept(this); // condición
         this.code.popObject(r.T0);
+        this.code.beq(r.T0, r.ZERO, endLabel);
 
-        // Crear etiquetas para los casos y el default
-        const defaultLabel = this.code.createLabel('default');
-        const endLabel = this.code.createLabel('end_switch');
-        const caseLabels = node.cases.map(() => this.code.createLabel('case'));
-
-        // Generar comparaciones para cada case
-        node.cases.forEach((caseNode, index) => {
-            // Valor del case a comparar
-            caseNode.value.accept(this);
-            this.code.popObject(r.T1);
-
-            // Comparar el valor de la expresión del switch con el valor del case
-            this.code.beq(r.T0, r.T1, caseLabels[index]);
-        });
-
-        // Si no se cumple ningún case, saltar al default
-        this.code.defaultJump(defaultLabel);
-
-        // Generar el código para cada case
-        node.cases.forEach((caseNode, index) => {
-            this.code.addLabel(caseLabels[index]);
-            caseNode.stmt.accept(this);
-            this.code.defaultJump(endLabel); // Saltar al final después de ejecutar el case
-        });
-
-        // Generar el código para el default, si existe
-        this.code.addLabel(defaultLabel);
-        if (node.defaultStmt) {
-            node.defaultStmt.accept(this);
-        }
-
-        // Etiqueta de fin del switch
+        node.stmt.accept(this); // cuerpo del ciclo
+        this.code.addLabel(stepLabel);
+        node.inc.accept(this); // incremento
+        this.code.j(startLabel);
         this.code.addLabel(endLabel);
     }
-
-    concatStrings(rd, rs1, rs2) {
-        this.comment('Concatenating two strings');
     
-        // Copiar primera cadena
-        this.loopCopy(rs1, r.HP); // Copiar la primera cadena al heap
-    
-        // Copiar segunda cadena inmediatamente después de la primera
-        this.loopCopy(rs2, r.HP); // Continuar la copia desde donde se dejó la primera
-    
-        this.push(rd); // Guardar la dirección del resultado concatenado
-    }
-    
-    
-    loopCopy(rs, dest) {
-        this.comment(`Copying string from ${rs} to ${dest}`);
+    visitSwitch(node) {
         
-        const loopLabel = this.createLabel("loop_copy"); // Crear una etiqueta para el bucle
-        const endLabel = this.createLabel("end_copy");   // Crear una etiqueta para el final del bucle
+        this.code.comment('Switch');
+        node.expr.accept(this); // Evaluar expresión
+        this.code.popObject(r.T2); // Almacenar resultado
+
+        const endLabel = this.code.getLabel();
+        const caseLabels = node.cases.map(() => this.code.getLabel());
+        const defaultLabel = node.defaultCase ? this.code.getLabel() : endLabel;
+        this.code.breakStack.push(endLabel);
+        node.cases.forEach((c, i) => {
+            this.code.comment(`Case ${c.value}`);
+            c.expr.accept(this); // Evaluar la expresión del case
+            this.code.popObject(r.T1);
+            this.code.beq(r.T2, r.T1, caseLabels[i]); // Comparar con el valor de la expresión
+
+        });
     
-        // Copiar la cadena byte a byte
-        this.addLabel(loopLabel);
+        if (node.defaultCase) {
+            this.code.j(defaultLabel); // Saltar a default si ningún case coincide
+        }
     
-        // Cargar el byte desde la dirección de origen (rs)
-        this.lw(r.T1, rs, 0); // T1 = *rs
-        this.beqz(r.T1, endLabel); // Si es el byte final (cero), salir del bucle
+        node.cases.forEach((c, i) => {
+            this.code.addLabel(caseLabels[i]);
+            c.stmts.forEach(s => s.accept(this)); // Ejecutar los statements del case
+            this.code.j(endLabel); // Saltar al final después de ejecutar un case
+        });
     
-        // Guardar el byte en el destino (dest)
-        this.sw(r.T1, dest, 0); // *dest = T1
+        if (node.defaultCase) {
+            this.code.addLabel(defaultLabel);
+            node.defaultCase.stmts.forEach(s => s.accept(this)); // Ejecutar los statements del default 
+        }
     
-        // Incrementar las direcciones de origen y destino
-        this.addi(rs, rs, 4);   // Avanzar el puntero de origen (rs)
-        this.addi(dest, dest, 4); // Avanzar el puntero de destino (heap)
-    
-        // Saltar al inicio del bucle para continuar copiando
-        this.j(loopLabel);
-    
-        // Etiqueta para el final del bucle de copia
-        this.addLabel(endLabel);
+        this.code.addLabel(endLabel);
+
     }
     
+    visitDeclaracionArray(node) {
+        this.code.comment(`Declaración de Array: ${node.id}`);
+        
+        // Evaluar tamaño del array
+        node.size.accept(this);
+        const sizeObject = this.code.popObject(r.T0);
     
+        this.code.allocateArray(sizeObject.valor, node.id); // Asignar espacio para el array
+    
+        this.code.pushObject({ type: 'array', size: sizeObject.valor, id: node.id });
+        this.code.comment(`Fin de declaración de Array: ${node.id}`);
+    }
+    
+    visitBreak(node) {
+        
+        this.code.comment('Break');
+        const endLabel = this.code.getBreakLabel();
+        this.code.j(endLabel);       
+    }
+
+    visitContinue(node) {
+        this.code.comment('Continue');
+        const startLabel = this.code.getContinueLabel();
+        this.code.j(startLabel);
+    }
+
+    visitReturn(node) {
+        this.code.comment('Return');
+        if (node.exp) {
+            node.exp.accept(this);
+            this.code.popObject(r.V0);
+        }
+        this.code.j(this.code.getReturnLabel());
+    }
+
+    visitParseInt(node) {
+        this.code.comment('parseIntBuiltin');
+        node.exp.accept(this);
+        this.code.popObject(r.A0);
+        this.code.callBuiltin('parseIntBuiltin');
+        this.code.pushObject({ type: 'int', length: 4 });
+    }
+
+    visitToString(node) {
+        this.code.comment('toStringBuiltin');
+        node.exp.accept(this);
+        this.code.popObject(r.A0);
+        this.code.callBuiltin('toStringBuiltin');
+        this.code.pushObject({ type: 'string', length: 4 });
+    }
+
+    
+    visitTypeOf(node) {
+      node.exp.accept(this);
+      const valor = this.code.popObject(r.T0);
+      if (valor.type === 'int') {
+          this.code.pushConstant({ type: 'string', valor: 'int' });} else if (valor.type === 'float') {
+          this.code.pushConstant({ type: 'string', valor: 'float' });} else if (valor.type === 'char') {
+          this.code.pushConstant({ type: 'string', valor: 'char' });} else if (valor.type === 'boolean') {
+          this.code.pushConstant({ type: 'string', valor: 'boolean' });} else if (valor.type === 'string') {
+          this.code.pushConstant({ type: 'string', valor: 'string' });}
+      this.code.pushObject({ type: 'string', length: 4 });
+      return}
+
+    visitToUpperCase(node) {
+        this.code.comment('upperCaseBuiltin');
+        node.exp.accept(this);
+        this.code.popObject(r.A0);
+        this.code.callBuiltin('upperCaseBuiltin');
+        this.code.pushObject({ type: 'string', length: 4 });
+    }
+
+    visitToLowerCase(node) {
+        this.code.comment('lowerCaseBuiltin');
+        node.exp.accept(this);
+        this.code.popObject(r.A0);
+        this.code.callBuiltin('lowerCaseBuiltin');
+        this.code.pushObject({ type: 'string', length: 4 });
+    }
 
 }
