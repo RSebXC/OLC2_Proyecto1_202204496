@@ -1,4 +1,4 @@
-import { registers as r } from "./constantes.js"
+import { registers as r , floatRegisters as f} from "./constantes.js"
 import { Generador } from "./generador.js"
 
 
@@ -47,140 +47,188 @@ export const concatString = (code) => {
     code.printString();  // Imprimir la cadena
 }
 
-
-
-export const parseIntBuiltin = (code) => {
-    code.comment('Convirtiendo cadena a entero');
-    const endParse = code.getLabel();
-
-    // Inicializa el resultado como 0
-    code.li(r.T2, 0); // T2 será el acumulador del resultado
-
-    // Guardar la dirección original para restaurar
-    code.push(r.A0);
-
-    // Recorre cada carácter en la cadena
-    const loop = code.addLabel();
-    code.lb(r.T1, r.A0);   // Cargar el byte actual de la cadena
-    code.beq(r.T1, r.ZERO, endParse); // Termina si es el carácter nulo
-
-    // Si el carácter es un dígito (entre '0' y '9')
-    code.li(r.T3, '0'.charCodeAt(0)); // Cargar '0'
-    code.li(r.T4, '9'.charCodeAt(0)); // Cargar '9'
-    code.blt(r.T1, r.T3, endParse);   // Si el carácter es menor que '0', terminar
-    code.bgt(r.T1, r.T4, endParse);   // Si el carácter es mayor que '9', terminar
-
-    // Convierte el carácter a su valor numérico
-    code.sub(r.T1, r.T1, r.T3); // T1 = T1 - '0'
-
-    // Acumula el valor en el resultado
-    code.mul(r.T2, r.T2, 10); // T2 = T2 * 10
-    code.add(r.T2, r.T2, r.T1); // T2 += T1
-
-    // Avanza al siguiente carácter en la cadena
-    code.addi(r.A0, r.A0, 1);
+export const parseIntString = (code) => {
+    code.comment('Convirtiendo string a integer');
+    
+    // Registros:
+    // A0 -> dirección del string en heap
+    // T0 -> resultado final
+    // T1 -> caracter actual
+    // T2 -> usado para cálculos temporales
+    // T3 -> signo (-1 o 1)
+    
+    code.li(r.T0, 0);  // Inicializar resultado
+    code.li(r.T3, 1);  // Inicializar signo como positivo
+    
+    // Verificar si el primer carácter es un signo
+    code.lb(r.T1, r.A0);
+    const noEsSigno = code.getLabel();
+    const loop = code.getLabel();
+    
+    // Verificar si es signo negativo
+    code.li(r.T2, 45);  // ASCII de '-'
+    code.bne(r.T1, r.T2, noEsSigno);
+    code.li(r.T3, -1);  // Cambiar signo a negativo
+    code.addi(r.A0, r.A0, 1);  // Avanzar al siguiente caracter
+    
+    code.addLabel(noEsSigno);
+    code.addLabel(loop);
+    
+    // Leer siguiente caracter
+    code.lb(r.T1, r.A0);
+    
+    // Si es null (0), terminar
+    const end = code.getLabel();
+    code.beq(r.T1, r.ZERO, end);
+    
+    // Verificar si es dígito (entre ASCII 48-57)
+    const noEsDigito = code.getLabel();
+    code.li(r.T2, 48);  // ASCII de '0'
+    code.blt(r.T1, r.T2, noEsDigito);
+    code.li(r.T2, 57);  // ASCII de '9'
+    code.bgt(r.T1, r.T2, noEsDigito);
+    
+    // Convertir ASCII a número
+    code.addi(r.T1, r.T1, -48);
+    
+    // Multiplicar resultado actual por 10 y sumar nuevo dígito
+    code.li(r.T2, 10);
+    code.mul(r.T0, r.T0, r.T2);
+    code.add(r.T0, r.T0, r.T1);
+    
+    code.addLabel(noEsDigito);
+    code.addi(r.A0, r.A0, 1);  // Avanzar al siguiente caracter
     code.j(loop);
     
-    code.addLabel(endParse);
-    // Restaurar la dirección original en A0
-    code.pop(r.A0);
-    // Devolver el entero parseado en A0
-    code.move(r.A0, r.T2);
+    code.addLabel(end);
+    
+    // Aplicar el signo al resultado
+    code.mul(r.T0, r.T0, r.T3);
+    
+    // Guardar resultado en el stack
+    code.push(r.T0);
 }
 
-
-
-export const toStringBuiltin = (code) => {
-    code.comment('Convirtiendo entero a cadena');
-    const endToString = code.getLabel();
-    const isNegative = code.getLabel();
-
-    code.li(r.T2, 10);  // T2 = 10 para las divisiones
-    code.move(r.T3, r.A0); // Guardar el valor original en T3
-    code.bltz(r.A0, isNegative); // Si es negativo, manejarlo
-
-    // Guardar la posición actual en el heap
-    code.push(r.HP);
-
-    // Si es positivo, convertir a string
-    const loop = code.addLabel();
-    code.divu(r.T4, r.T3, r.T2); // T4 = T3 / 10
-    code.mfhi(r.T1);  // T1 = T3 % 10
-    code.addi(r.T1, r.T1, '0'.charCodeAt(0));  // Convertir a carácter
-    code.sb(r.T1, r.HP);  // Guardar en el heap
-    code.addi(r.HP, r.HP, 1); // Incrementar el heap
-    code.move(r.T3, r.T4);  // Actualizar T3
-    code.bnez(r.T3, loop);  // Continuar hasta que T3 sea 0
-
-    code.j(endToString); // Saltar al final si no es negativo
-
-    code.addLabel(isNegative);
-    code.comment('Si el número es negativo');
-    code.neg(r.T3, r.A0);  // Convertir el número a positivo
-    code.sb('-'.charCodeAt(0), r.HP);  // Agregar el signo negativo en el heap
-    code.addi(r.HP, r.HP, 1); // Incrementar el heap
-
-    code.addLabel(endToString);
-    // Agregar el carácter nulo al final
-    code.sb(r.ZERO, r.HP);
-    code.addi(r.HP, r.HP, 1);
+export const parseIntFloat = (code) => {
+    code.comment('Convirtiendo int a float');
+    code.fmvs(f.FT0, f.FA0); //mover
+    code.fcvtws(r.T0, f.FT0); //convertir a entero truncado
+    code.push(r.T0); //push
+    code.jr(r.RA); //llamar a la funcion printFloat
 }
 
-
-export const parseFloatBuiltin = (code) => {
-    code.comment('Convirtiendo cadena a float');
-    const endParse = code.getLabel();
-    const decimalPart = code.getLabel();
-    const loop = code.addLabel();
-
-    // Inicializa el resultado y el factor para decimales
-    code.li(r.T2, 0); // T2 será el acumulador del resultado
-    code.li(r.T5, 1); // T5 será el factor para los decimales
-
-    // Guardar la dirección original
-    code.push(r.A0);
-
-    // Recorre cada carácter en la cadena
-    code.addLabel(loop);
-    code.lb(r.T1, r.A0);   // Cargar el byte actual de la cadena
-    code.beq(r.T1, r.ZERO, endParse); // Termina si es el carácter nulo
-
-    // Si es un punto decimal
-    code.li(r.T4, '.'.charCodeAt(0));
-    code.beq(r.T1, r.T4, decimalPart);
-
-    // Convertir carácter a su valor numérico
-    code.li(r.T3, '0'.charCodeAt(0));
-    code.sub(r.T1, r.T1, r.T3);
-    code.mul(r.T2, r.T2, 10);
-    code.add(r.T2, r.T2, r.T1);
-
-    // Avanza al siguiente carácter
-    code.addi(r.A0, r.A0, 1);
-    code.j(loop);
-
-    // Manejar la parte decimal
-    code.addLabel(decimalPart);
-    code.addi(r.A0, r.A0, 1);
-    const decimalLoop = code.addLabel();
+export const parseFloatString = (code) => {
+    code.comment('Convirtiendo string a float');
+    
+    // Registros:
+    // A0 -> dirección del string en heap
+    // T0 -> parte entera del resultado
+    // T1 -> caracter actual
+    // T2 -> usado para cálculos temporales
+    // T3 -> signo (-1 o 1)
+    // T4 -> parte decimal del resultado
+    // T5 -> divisor para parte decimal (0.1, 0.01, etc)
+    
+    code.li(r.T0, 0);  // Inicializar parte entera
+    code.li(r.T4, 0);  // Inicializar parte decimal
+    code.li(r.T3, 1);  // Inicializar signo como positivo
+    code.li(r.T5, 1);  // Inicializar divisor
+    
+    // Verificar si el primer carácter es un signo
     code.lb(r.T1, r.A0);
-    code.beq(r.T1, r.ZERO, endParse);
-
-    // Convertir carácter a su valor numérico
-    code.sub(r.T1, r.T1, r.T3);
-    code.mul(r.T5, r.T5, 10);
-    code.div(r.T1, r.T1, r.T5);
-    code.add(r.T2, r.T2, r.T1);
-
-    // Avanza al siguiente carácter
-    code.addi(r.A0, r.A0, 1);
-    code.j(decimalLoop);
-
-    code.addLabel(endParse);
-    code.pop(r.A0);
-    code.move(r.A0, r.T2);
+    const noEsSigno = code.getLabel();
+    const parteDecimal = code.getLabel();
+    const loop = code.getLabel();
+    
+    // Verificar si es signo negativo
+    code.li(r.T2, 45);  // ASCII de '-'
+    code.bne(r.T1, r.T2, noEsSigno);
+    code.li(r.T3, -1);  // Cambiar signo a negativo
+    code.addi(r.A0, r.A0, 1);  // Avanzar al siguiente caracter
+    
+    code.addLabel(noEsSigno);
+    code.addLabel(loop);
+    
+    // Leer siguiente caracter
+    code.lb(r.T1, r.A0);
+    
+    // Si es null (0), terminar
+    const end = code.getLabel();
+    code.beq(r.T1, r.ZERO, end);
+    
+    // Verificar si es punto decimal
+    code.li(r.T2, 46);  // ASCII de '.'
+    code.beq(r.T1, r.T2, parteDecimal);
+    
+    // Verificar si es dígito (entre ASCII 48-57)
+    const noEsDigito = code.getLabel();
+    code.li(r.T2, 48);  // ASCII de '0'
+    code.blt(r.T1, r.T2, noEsDigito);
+    code.li(r.T2, 57);  // ASCII de '9'
+    code.bgt(r.T1, r.T2, noEsDigito);
+    
+    // Convertir ASCII a número
+    code.addi(r.T1, r.T1, -48);
+    
+    // Multiplicar resultado actual por 10 y sumar nuevo dígito
+    code.li(r.T2, 10);
+    code.mul(r.T0, r.T0, r.T2);
+    code.add(r.T0, r.T0, r.T1);
+    
+    code.addLabel(noEsDigito);
+    code.addi(r.A0, r.A0, 1);  // Avanzar al siguiente caracter
+    code.j(loop);
+    
+    // Procesar parte decimal
+    code.addLabel(parteDecimal);
+    code.addi(r.A0, r.A0, 1);  // Saltar el punto decimal
+    
+    const loopDecimal = code.addLabel();
+    code.lb(r.T1, r.A0);
+    code.beq(r.T1, r.ZERO, end);
+    
+    // Verificar si es dígito
+    const noEsDigitoDecimal = code.getLabel();
+    code.li(r.T2, 48);  // ASCII de '0'
+    code.blt(r.T1, r.T2, noEsDigitoDecimal);
+    code.li(r.T2, 57);  // ASCII de '9'
+    code.bgt(r.T1, r.T2, noEsDigitoDecimal);
+    
+    // Convertir ASCII a número
+    code.addi(r.T1, r.T1, -48);
+    
+    // Multiplicar T5 por 10 (siguiente posición decimal)
+    code.li(r.T2, 10);
+    code.mul(r.T5, r.T5, r.T2);
+    
+    // Agregar el dígito decimal al resultado
+    code.mul(r.T2, r.T1, r.T5);  // Multiplicar dígito por la potencia de 10
+    code.add(r.T4, r.T4, r.T2);  // Agregar a la parte decimal
+    
+    code.addLabel(noEsDigitoDecimal);
+    code.addi(r.A0, r.A0, 1);  // Avanzar al siguiente caracter
+    code.j(loopDecimal);
+    
+    code.addLabel(end);
+    
+    // Combinar parte entera y decimal
+    code.div(r.T4, r.T4, r.T5);  // Dividir parte decimal por el divisor
+    code.add(r.T0, r.T0, r.T4);  // Sumar parte decimal al resultado
+    
+    // Aplicar el signo al resultado
+    code.mul(r.T0, r.T0, r.T3);
+    
+    // Guardar resultado en el stack
+    code.push(r.T0);
 }
 
+export const parseFloatInt = (code) => {
+    code.comment('Convirtiendo entero a float');
+    code.fmv_w_x(r.FT0, r.T0); //mover
+    code.fcvt_s_w(r.FA0, r.FT0); //convertir a float
+    code.push(r.FA0); //push
+    code.jr('printFloat'); //llamar a la funcion printFloat
+}
 
 export const upperCaseBuiltin = (code) => {
     code.comment('Convirtiendo cadena a mayúsculas');
@@ -246,12 +294,40 @@ export const lowerCaseBuiltin = (code) => {
 }
 
 
+export const lessOrEqual = (code) => {
+    // t1: left operand
+    // t0 -> right operand
+
+    /*
+    if (left <= right) {
+        t0 = 1
+        push t0
+    } else {
+        t0 = 0
+        push t0
+    }
+    */
+    const trueLabel = code.getLabel()
+    const endLabel = code.getLabel()
+
+    code.bge(r.T0, r.T1, trueLabel) // der >= izq
+    code.li(r.T0, 0)
+    code.push(r.T0)
+    code.j(endLabel)
+    code.addLabel(trueLabel)
+    code.li(r.T0, 1)
+    code.push(r.T0)
+    code.addLabel(endLabel)
+}
+
 
 export const builtins = {
     concatString: concatString,
-    
-    parseIntBuiltin: parseIntBuiltin,
-    toStringBuiltin: toStringBuiltin,
+    parseIntFloat: parseIntFloat,
+    parseFloatInt: parseFloatInt,
+    parseIntString: parseIntString,
+    parseFloatString: parseFloatString,
     upperCaseBuiltin: upperCaseBuiltin,
-    lowerCaseBuiltin: lowerCaseBuiltin
+    lowerCaseBuiltin: lowerCaseBuiltin,
+    lessOrEqual: lessOrEqual
 }

@@ -425,13 +425,14 @@ visitLength(node) {
         return variable.valor; // Solo devuelve el valor
         
     }
-    
+
+    // debe aceptar cadenas y float
         visitParseInt(node) {
             const valor = node.exp.accept(this); // Evalúa la expresión que contiene el nodo
             if (typeof valor === 'string') {
-                return parseInt(valor);  // Convierte la cadena a un entero
+                return parseInt(valor);  // Convierte la cadena a un número entero
             } else {
-                throw new Error("parseInt solo acepta cadenas");
+                return parseInt(valor);  // Convierte el número de punto flotante a un número entero
             }
         }
     
@@ -440,7 +441,7 @@ visitLength(node) {
             if (typeof valor === 'string') {
                 return parseFloat(valor);  // Convierte la cadena a un número de punto flotante
             } else {
-                throw new Error("parseFloat solo acepta cadenas");
+                return parseFloat(valor);  // Convierte el número entero a un número de punto flotante
             }
         }
     

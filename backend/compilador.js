@@ -1,4 +1,4 @@
-import { registers as r } from "./risc/constantes.js";
+import { registers as r, floatRegisters as f } from "./risc/constantes.js";
 import { Generador } from "./risc/generador.js";
 import { BaseVisitor } from "./visitor.js";
 
@@ -24,7 +24,7 @@ export class CompilerVisitor extends BaseVisitor {
         if (node.tipo === 'bool') {
             this.code.pushConstant({ type: 'int', valor: node.valor ? 1 : 0 });
         } else {
-        this.code.pushConstant({ type: node.tipo, valor: node.valor });
+        this.code.pushConstant({ type: node.tipo, valor: node.valor !== undefined ? node.valor : null });
         }
         this.code.comment(`Fin Primitivo: ${node.valor}`);
     }
@@ -107,8 +107,10 @@ export class CompilerVisitor extends BaseVisitor {
         node.izq.accept(this); // izq |
         node.der.accept(this); // izq | der
 
-        const der = this.code.popObject(r.T0); // der
-        const izq = this.code.popObject(r.T1); // izq
+        const isDerFloat = this.code.getTopObject().type === 'float';
+        const der = this.code.popObject(isDerFloat ? f.FT0 : r.T0); // der
+        const isIzqFloat = this.code.getTopObject().type === 'float';
+        const izq = this.code.popObject(isIzqFloat ? f.FT1 : r.T1); // izq
 
         if (izq.type === 'string' && der.type === 'string') {
             this.code.add(r.A0, r.ZERO, r.T1);
@@ -116,6 +118,67 @@ export class CompilerVisitor extends BaseVisitor {
             this.code.callBuiltin('concatString');
             this.code.pushObject({ type: 'string', length: 4 });
             return;
+        }
+
+        if (isIzqFloat || isDerFloat) {
+            if (!isIzqFloat) this.code.fcvtsw(f.FT1, r.T1);
+            if (!isDerFloat) this.code.fcvtsw(f.FT0, r.T0);
+
+            switch (node.op) {
+                case '+':
+                    this.code.fadd(f.FT0, f.FT1, f.FT0);
+                    break;
+                case '-':
+                    this.code.fsub(f.FT0, f.FT1, f.FT0);
+                    break;
+                case '*':
+                    this.code.fmul(f.FT0, f.FT1, f.FT0);
+                    break;
+                case '/':
+                    this.code.fdiv(f.FT0, f.FT1, f.FT0);
+                    break;
+                case '%':
+                    this.code.frem(f.FT0, f.FT1, f.FT0);
+                    break;
+                case '==':
+                    this.code.feq(f.FT0, f.FT1, f.FT0);
+                    this.code.push(r.T0);
+                    this.code.pushObject({ type: 'int', length: 4 });
+                    return;
+                case '!=':
+                    this.code.feq(f.FT0, f.FT1, f.FT0);
+                    this.code.xori(r.T0, r.T0, 1);
+                    this.code.push(r.T0);
+                    this.code.pushObject({ type: 'int', length: 4 });
+                    return;
+                case '<':
+                    this.code.flt(r.T0, f.FT1, f.FT0);
+                    this.code.push(r.T0);
+                    this.code.pushObject({ type: 'int', length: 4 });
+                    return;
+                case '>':
+                    this.code.flt(r.T0, f.FT0, f.FT1);
+                    this.code.push(r.T0);
+                    this.code.pushObject({ type: 'int', length: 4 });
+                    return;
+                case '<=':
+                    this.code.fle(r.T0, f.FT1, f.FT0);
+                    this.code.push(r.T0);
+                    this.code.pushObject({ type: 'int', length: 4 });
+                    return;
+                case '>=':
+                    this.code.fle(r.T0, f.FT0, f.FT1);
+                    this.code.push(r.T0);
+                    this.code.pushObject({ type: 'int', length: 4 });
+                    return;
+                    
+            }
+
+            this.code.pushFloat(f.FT0);
+            this.code.pushObject({ type: 'float', length: 4 });
+            return;
+            
+
         }
     
         switch (node.op) {
@@ -205,7 +268,8 @@ export class CompilerVisitor extends BaseVisitor {
         this.code.comment('Print');
         node.exp.forEach(e => {
             e.accept(this);
-            const object = this.code.popObject(r.A0);
+            const isFloat = this.code.getTopObject().type === 'float';
+            const object = this.code.popObject(isFloat ? f.FA0 : r.A0);
             const tipoPrint = {
                 'int': () => this.code.printInt(),
                 'string': () => this.code.printString(),
@@ -217,14 +281,30 @@ export class CompilerVisitor extends BaseVisitor {
         });
     }
 
-    /**
+     /**
      * @type {BaseVisitor['visitDeclaracionVariable']}
      */
-    visitDeclaracionVariable(node) {
+     visitDeclaracionVariable(node) {
         this.code.comment(`Declaracion Variable: ${node.id}`);
-
-
+        if (node.exp) {
         node.exp.accept(this);
+        } else {
+        this.code.pushConstant({ type: 'int', valor: 0 });
+        }
+        if (this.insideFunction) {
+            const localObject = this.code.getFrameLocal(this.frameDclIndex);
+            const valueObj = this.code.popObject(r.T0);
+
+            this.code.addi(r.T1, r.FP, -localObject.offset * 4);
+            this.code.sw(r.T0, r.T1);
+
+            // ! inferir el tipo
+            localObject.type = valueObj.type;
+            this.frameDclIndex++;
+
+            return
+        }
+
         this.code.tagObject(node.id);
 
         this.code.comment(`Fin declaracion Variable: ${node.id}`);
@@ -239,6 +319,12 @@ export class CompilerVisitor extends BaseVisitor {
         node.asgn.accept(this);
         const valueObject = this.code.popObject(r.T0);
         const [offset, variableObject] = this.code.getObject(node.id);
+
+        if (this.insideFunction) {
+            this.code.addi(r.T1, r.FP, -variableObject.offset * 4); // ! REVISAR
+            this.code.sw(r.T0, r.T1); // ! revisar
+            return
+        }
 
         this.code.addi(r.T1, r.SP, offset);
         this.code.sw(r.T0, r.T1);
@@ -441,19 +527,30 @@ export class CompilerVisitor extends BaseVisitor {
     }
 
     visitParseInt(node) {
-        this.code.comment('parseIntBuiltin');
+        this.code.comment('parseIntString');
         node.exp.accept(this);
-        this.code.popObject(r.A0);
-        this.code.callBuiltin('parseIntBuiltin');
+        
+        const isFloat = this.code.getTopObject().type === 'float';
+        this.code.popObject(isFloat ? f.FA0 : r.A0);
+        
+        if (isFloat) {
+        this.code.callBuiltin('parseIntFloat');
+        }else{
+        this.code.callBuiltin('parseIntString');
+        }
         this.code.pushObject({ type: 'int', length: 4 });
     }
 
-    visitToString(node) {
-        this.code.comment('toStringBuiltin');
+    visitParseFloat(node) {
+        this.code.comment('parseFloatString');
         node.exp.accept(this);
         this.code.popObject(r.A0);
-        this.code.callBuiltin('toStringBuiltin');
-        this.code.pushObject({ type: 'string', length: 4 });
+        if (node.type === 'int') {
+        this.code.callBuiltin('parseFloatInt');
+        }else if (node.type === 'string') {
+        this.code.callBuiltin('parseFloatString');
+        }
+        this.code.pushObject({ type: 'float', length: 4 });
     }
 
     

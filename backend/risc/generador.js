@@ -1,6 +1,6 @@
 import { builtins } from "./builtins.js";
 import { registers as r } from "./constantes.js";
-import { stringTo32BitsArray, stringTo1ByteArray } from "./utils.js";
+import { stringTo32BitsArray, stringTo1ByteArray , numberToF32} from "./utils.js";
 
 export class Instruction {
 
@@ -77,7 +77,9 @@ export class Generador {
         this.instrucciones.push(new Instruction('seqz', rd, rd)); // Invertir el resultado
     }
 
-
+    la(rd, label) {
+        this.instrucciones.push(new Instruction('la', rd, label))
+    }
 
     // Mayor o igual ( >= )
     sge(rd, rs1, rs2) {
@@ -87,6 +89,10 @@ export class Generador {
 
     xor(rd, rs1, rs2) { // XOR lógico
         this.instrucciones.push(new Instruction('xor', rd, rs1, rs2));
+    }
+
+    xori(rd, rs1, inmediato) { // XOR lógico con inmediato
+        this.instrucciones.push(new Instruction('xori', rd, rs1, inmediato));
     }
 
     sb (rs1, rs2, inmediato = 0) {
@@ -136,6 +142,11 @@ export class Generador {
     push(rd = r.T0) {
         this.addi(r.SP, r.SP, -4) // 4 bytes = 32 bits
         this.sw(rd, r.SP)
+    }
+
+    pushFloat(rd = r.FT0) {
+        this.addi(r.SP, r.SP, -4) // 4 bytes = 32 bits
+        this.fsw(rd, r.SP)
     }
 
     rem(rd, rs1, rs2) {
@@ -190,13 +201,20 @@ export class Generador {
         }
     }
 
+    flw(rd, rs1, inmediato = 0) {
+        this.instrucciones.push(new Instruction('flw', rd, `${inmediato}(${rs1})`))
+    }
+
+    lui(rd, inmediato) {
+        this.instrucciones.push(new Instruction('lui', rd, inmediato))
+    }
+
     printBool(rd = r.A0) {
         if (rd !== r.A0) {
             this.push(r.A0)
             this.add(r.A0, rd, r.ZERO)
         }
 
-        //Imprimir "true" o "false"
         const falseLabel = this.getLabel()
         const endLabel = this.getLabel()
 
@@ -223,25 +241,19 @@ export class Generador {
 
     }
 
-    printFloat(rd = r.F0) {
-        this.instrucciones.push(new Instruction('fmv.s', r.F12, rd))
+    printFloat() {
         this.li(r.A7, 2)
         this.ecall()
-
     }
 
     printChar(rd = r.A0) {
         if (rd !== r.A0) {
-            this.push(r.A0)
-            this.add(r.A0, rd, r.ZERO)
+            this.mv (r.A0, rd)
         }
 
+        this.andi(r.A0, r.A0, 0xFF)
         this.li(r.A7, 11)
         this.ecall()
-
-        if (rd !== r.A0) {
-            this.pop(r.A0)
-        }
         
 
     }
@@ -285,6 +297,18 @@ export class Generador {
         this.instrucciones.push(new Instruction('blt', rs1, rs2, label));
     }
 
+    flt (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('flt.s', rs1, rs2, label));
+    }
+
+    fle (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('fle.s', rs1, rs2, label));
+    }
+
+    feq (rs1, rs2, label) {
+        this.instrucciones.push(new Instruction('feq', rs1, rs2, label));
+    }
+
     ret() {
         this.instrucciones.push(new Instruction('ret'));
     }
@@ -294,6 +318,10 @@ export class Generador {
         label = label || this.getLabel()
         this.instrucciones.push(new Instruction(`${label}:`))
         return label
+    }
+
+    andi(rd, rs1, inmediato) {
+        this.instrucciones.push(new Instruction('andi', rd, rs1, inmediato));
     }
 
 
@@ -308,15 +336,15 @@ export class Generador {
 
         switch (object.type) {
             case 'int':
-                this.li(r.T0, object.valor);
+                this.li(r.T0, object.valor !== undefined ? object.valor : 0);
                 this.push()
                 length = 4;
                 break;
 
                 case 'string':
-                    const stringArray = stringTo1ByteArray(object.valor);
+                    const stringArray = stringTo1ByteArray(object.valor || "");
 
-                this.comment(`Pushing string ${object.valor}`);
+                this.comment(`Pushing string ${object.valor || "null"}`);
                 // this.addi(r.T0, r.HP, 4);
                 // this.push(r.T0);
                 this.push(r.HP);
@@ -334,11 +362,23 @@ export class Generador {
                 length = 4;
                 break;
             case 'bool':
-                this.li(r.T0, object.valor ? 1 : 0);
+                this.li(r.T0, object.valor !== undefined ? (object.valor ? 1 : 0) : 0);
                 this.push()
                 length = 4;
                 break;
+            case 'float':
+                const ieee754 = numberToF32(object.valor);
+                this.li(r.T0, ieee754);
+                this.push(r.T0);
+                length = 4;
+                break;
 
+            case 'char':
+
+                this.li(r.T0, object.valor !== undefined ? object.valor.charCodeAt(0) : 0);
+                this.push(r.T0)
+                length = 4;
+                break;
             default:
                 break;
         }
@@ -347,7 +387,16 @@ export class Generador {
     }
 
     pushObject(object) {
-        this.objectStack.push(object);
+        // this.objectStack.push(object);
+        this.objectStack.push({
+            ...object,
+            depth: this.depth,
+        });
+    }
+
+    popFloat(rd = r.FT0) {
+        this.flw(rd, r.SP)
+        this.addi(r.SP, r.SP, 4)
     }
 
     popObject(rd = r.T0) {
@@ -362,7 +411,13 @@ export class Generador {
             case 'string':
                 this.pop(rd);
                 break;
-            case 'bool':
+            case 'boolean':
+                this.pop(rd);
+                break;
+            case 'float':
+                this.popFloat(rd);
+                break;
+            case 'char':
                 this.pop(rd);
                 break;
             default:
@@ -370,6 +425,11 @@ export class Generador {
         }
 
         return object;
+    }
+
+
+    getTopObject() {
+        return this.objectStack[this.objectStack.length - 1];
     }
 
     /*
@@ -432,8 +492,8 @@ export class Generador {
         })
         return `
 .data
-        truee: .string "true"
-        falsee: .string "false"
+        truee: .string "truee"
+        falsee: .string "falsee"
         heap:
 .text
 
@@ -445,4 +505,61 @@ main:
 `
     }
 
+
+
+    // --- Instruciones flotantes
+
+    fadd(rd, rs1, rs2) {
+        this.instrucciones.push(new Instruction('fadd.s', rd, rs1, rs2))
+    }
+
+    fsub(rd, rs1, rs2) {
+        this.instrucciones.push(new Instruction('fsub.s', rd, rs1, rs2))
+    }
+
+    fmul(rd, rs1, rs2) {
+        this.instrucciones.push(new Instruction('fmul.s', rd, rs1, rs2))
+    }
+
+    fdiv(rd, rs1, rs2) {
+        this.instrucciones.push(new Instruction('fdiv.s', rd, rs1, rs2))
+    }
+
+    fli(rd, inmediato) {
+        this.instrucciones.push(new Instruction('fli.s', rd, inmediato))
+    }
+
+    fmv(rd, rs1) {
+        this.instrucciones.push(new Instruction('fmv.s', rd, rs1))
+    }
+
+    flw(rd, rs1, inmediato = 0) {
+        this.instrucciones.push(new Instruction('flw', rd, `${inmediato}(${rs1})`))
+    }
+
+    fsw(rs1, rs2, inmediato = 0) {
+        this.instrucciones.push(new Instruction('fsw', rs1, `${inmediato}(${rs2})`))
+    }
+
+    fmvs(rd, rs1) {
+        this.instrucciones.push(new Instruction('fmv.s', rd, rs1))
+    }
+
+    fcvtws(rd, rs1) {
+        this.instrucciones.push(new Instruction('fcvt.w.s', rd, rs1))
+    }
+
+    jr(rs) {
+        this.instrucciones.push(new Instruction('jr', rs))
+    }
+
+    fcvtsw(rd, rs1) {
+        this.instrucciones.push(new Instruction('fcvt.s.w', rd, rs1))
+    }
+
+    getFrameLocal(index) {
+        const frameRelativeLocal = this.objectStack.filter(obj => obj.type === 'local');
+        return frameRelativeLocal[index];
+    }
 }
+
