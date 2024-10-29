@@ -481,29 +481,35 @@ export class Generador {
     }
 
     toString() {
+        // Comentario final del programa
         this.comment('Fin del programa')
         this.endProgram()
+    
+        // Agregar Builtins usados
         this.comment('Builtins')
-
         Array.from(this._usedBuiltins).forEach(builtinName => {
             this.addLabel(builtinName)
             builtins[builtinName](this)
             this.ret()
         })
+    
+        // Retornar la representación en string del programa ensamblado
         return `
-.data
+    .data
         truee: .string "truee"
         falsee: .string "falsee"
-        heap:
-.text
-
-# inicializando el heap pointer
-    la ${r.HP}, heap
-
-main:
-    ${this.instrucciones.map(instruccion => `${instruccion}`).join('\n')}
-`
+        heap:     # Zona de memoria para el heap
+    
+    .text
+    
+    # Inicializar puntero del heap
+        la ${r.HP}, heap
+    
+    main:
+        ${this.instrucciones.map(instruccion => `${instruccion}`).join('\n')}
+    `
     }
+    
 
 
 
